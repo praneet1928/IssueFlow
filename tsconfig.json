@@ -1,0 +1,19 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": "./",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
+    "skipLibCheck": false,  // Changed to false for better type checking
+    "lib": ["esnext"],
+    "jsx": "react-native",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  //"exclude": ["node_modules"]
+}
