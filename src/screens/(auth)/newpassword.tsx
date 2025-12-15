@@ -3,7 +3,6 @@ import React, { useMemo,useState,useEffect } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   Image,
   TouchableOpacity,
@@ -19,7 +18,7 @@ import PrinterIcon from "../../../assets/images/printer.svg";
 import MonitorIcon from "../../../assets/images/monitor.svg";
 import WifiIcon from "../../../assets/images/wifirouter.svg";
 import GenericIcon from "../../../assets/images/GenericIcon.svg";
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 const primaryBlue = '#103482';

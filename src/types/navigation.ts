@@ -6,6 +6,8 @@ export type RootStackParamList = {
   NewPassword: undefined;
   ClientHome: undefined;
   NewTicket: undefined;
+  Successfull: undefined;
+  ClientTabs: undefined;
   Unactive: {email: string};
 };
 

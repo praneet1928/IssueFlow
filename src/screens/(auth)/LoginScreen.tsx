@@ -42,7 +42,7 @@ const LoginScreen: React.FC = () => {
       console.log('Logging in with:', { email, password });
       Keyboard.dismiss();
       await new Promise(r => setTimeout(r, 120));
-      navigation.navigate('ClientHome');
+      navigation.navigate('ClientTabs');
     }
   };
 
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   total: {
     flexGrow: 1,
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffffff',
   },
   logo: {
     width: '90%',
