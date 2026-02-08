@@ -7,9 +7,10 @@ import ForgotScreen from './src/screens/(auth)/ForgotScreen';
 import OtpScreen from './src/screens/(auth)/OtpScreen';
 import CreatedScreen from './src/screens/(auth)/PasswordCreated';
 import Newpassword from './src/screens/(auth)/NewPassword';
-
+import TicketDetailed from './src/screens/client/cards/TicketDetailed';
 import BottomTabs from './src/screens/client/BottomTabs';
 import Successfull from './src/screens/client/cards/successfull';
+import { TicketProvider } from "./src/context/TicketContext";
 
 import { RootStackParamList } from './src/types/navigation';
 
@@ -18,6 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
+      <TicketProvider>
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Login"
@@ -32,6 +34,8 @@ export default function App() {
 
           {/* ---------- CLIENT APP ---------- */}
           <Stack.Screen name="ClientTabs" component={BottomTabs} />
+          <Stack.Screen name="TicketDetailed" component={TicketDetailed} />
+
 
           {/* ---------- MODAL / OVERLAY ---------- */}
           <Stack.Screen
@@ -41,6 +45,7 @@ export default function App() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      </TicketProvider>
     </SafeAreaProvider>
   );
 }

@@ -1,3 +1,4 @@
+import type { IssueItem } from "../types";
 export type RootStackParamList = {
   Login: undefined;
   App: undefined;
@@ -8,6 +9,7 @@ export type RootStackParamList = {
   NewTicket: undefined;
   Successfull: undefined;
   ClientTabs: undefined;
+  TicketDetailed: {issue: IssueItem; };
   Unactive: {email: string};
 };
 

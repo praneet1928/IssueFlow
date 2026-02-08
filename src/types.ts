@@ -4,16 +4,30 @@ export interface IssueTag {
   label: string;
 }
 
-export interface IssueItem {
+export type IssueItem = {
   id: string;
-  code: string; // e.g., "#AD677"
-  priority: string;
-  timestampMinutesAgo: number;
+  code: string;
   title: string;
+  priority: "critical" | "moderate" | "low";
   location: string;
-  categoryTags: IssueTag[];
+
+  categoryTags: { id: string; label: string }[];
   Device: string;
-}
+
+  // ⬇️ BACKEND / LIFECYCLE FIELDS (OPTIONAL)
+  createdAt?: string;
+  status?: "in progress" | "in review" | "completed";
+  assignedTo?: string;
+
+  // ⬇️ OPTIONAL CONTENT
+  description?: string;
+  images?: string[];
+
+  // ⬇️ CLIENT-ONLY
+  timestampMinutesAgo?: number;
+};
+
+
 
 export interface DeviceItem {
   id: string;

@@ -21,6 +21,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTickets } from "../../context/TicketContext";
+import type { IssueItem } from "../../types";
 
 
 const priorities = ["Critical", "Moderate", "Low"] as const;
@@ -31,7 +33,7 @@ type ImageKind = "product" | "issue";
 async function requestGalleryPermission(): Promise<boolean> {
   try {
     const { status, granted, canAskAgain } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (granted || status === "granted") return true;
     if (!canAskAgain) {
       Alert.alert(
@@ -50,8 +52,9 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 const NewTicket: React.FC = () => {
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
-  const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null);
+  const [selectedIssueType, setSelectedIssueType] = useState<string[]>([]);
   const [title, setTitle] = useState("");
+  const { addTicket } = useTickets();
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
 	const navigation = useNavigation<any>();
@@ -66,15 +69,23 @@ const NewTicket: React.FC = () => {
   const flatRef = useRef<FlatList<string>>(null);
 
   const isFormValid = useMemo(
-    () =>
-      !!(
-        selectedPriority &&
-        selectedIssueType &&
-        title &&
-        location
-      ),
-    [selectedPriority, selectedIssueType, title, location, productImages]
+  () =>
+    !!(
+      selectedPriority &&
+      selectedIssueType.length > 0 &&
+      title &&
+      location
+    ),
+  [selectedPriority, selectedIssueType, title, location]
+);
+
+  const toggleIssueType = (type: string) => {
+  setSelectedIssueType((prev) =>
+    prev.includes(type)
+      ? prev.filter((t) => t !== type) // deselect
+      : [...prev, type]               // select
   );
+};
 
   const launchPicker = async (kind: ImageKind) => {
     const ok = await requestGalleryPermission();
@@ -118,12 +129,31 @@ const NewTicket: React.FC = () => {
     else setIssueImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSuccess = async() => {
-      if (isFormValid) {
-        Keyboard.dismiss();
-        navigation.navigate('Successfull');
-      }
-    };
+  const handleSuccess = () => {
+  if (!isFormValid) return;
+
+  const newTicket: IssueItem = {
+    id: Date.now().toString(),
+    code: `#AD${Math.floor(100 + Math.random() * 900)}`,
+    title,
+    location,
+    priority: selectedPriority!.toLowerCase() as IssueItem["priority"],
+    categoryTags: selectedIssueType.map((t, i) => ({
+      id: `${t}-${i}`,
+      label: t,
+    })),
+    Device: selectedIssueType[0] ?? "Other",
+    description,
+    images: issueImages, // 🔑 THIS SOLVES IMAGE SLIDER
+    createdAt: new Date().toISOString(),
+    status: "in progress",
+  };
+
+  addTicket(newTicket);
+
+  navigation.navigate("Successfull");
+};
+
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -175,20 +205,20 @@ const NewTicket: React.FC = () => {
         </Text>
         <View style={styles.row}>
           {issueTypes.map((item) => {
-            const selected = selectedIssueType === item;
-            return (
-              <TouchableOpacity
-                key={item}
-                style={[styles.pill, selected && styles.pillSelected]}
-                onPress={() => setSelectedIssueType(item)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.pillText, selected && styles.pillTextSelected]}>
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+  const selected = selectedIssueType.includes(item);
+  return (
+    <TouchableOpacity
+      key={item}
+      style={[styles.pill, selected && styles.pillSelected]}
+      onPress={() => toggleIssueType(item)}
+      activeOpacity={0.8}
+    >
+      <Text style={[styles.pillText, selected && styles.pillTextSelected]}>
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
+})}
         </View>
 
         <Text style={styles.label}>

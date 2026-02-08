@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet,Text } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 
@@ -34,15 +34,24 @@ export default function BottomTabs() {
   })}
 >
       <Tab.Screen
-        name="ClientHome"
-        component={ClientHome}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <HomeIcon width={24} color={focused ? ACTIVE : INACTIVE} />
-          ),
-        }}
-      />
-
+  name="ClientHome"
+  component={ClientHome}
+  options={{
+    tabBarIcon: ({ focused }) => (
+      <View style={styles.tabItem}>
+        <HomeIcon width={32} color={focused ? ACTIVE : INACTIVE}/>
+        <Text
+          style={[
+            styles.tabLabel,
+            { color: focused ? ACTIVE : INACTIVE },
+          ]}
+        >
+          Home
+        </Text>
+      </View>
+    ),
+  }}
+/>
       <Tab.Screen
         name="NewTicket"
         component={NewTicket}
@@ -56,28 +65,47 @@ export default function BottomTabs() {
       />
 
       <Tab.Screen
-        name="ClientHistory"
-        component={ClientHistory}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TicketIcon width={22} color={focused ? ACTIVE : INACTIVE} />
-          ),
-        }}
-      />
+  name="ClientHistory"
+  component={ClientHistory}
+  options={{
+    tabBarIcon: ({ focused }) => (
+      <View style={styles.tabItem}>
+        <TicketIcon width={24} color={focused ? ACTIVE : INACTIVE} />
+        <Text
+          style={[
+            styles.tabLabel,
+            { color: focused ? ACTIVE : INACTIVE },
+          ]}
+        >
+          History
+        </Text>
+      </View>
+    ),
+  }}
+/>
+
     </Tab.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 70,
+    height: 80,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 0.5,
     borderTopColor: "#E5E7EB",
   },
+  tabItem: {
+    marginTop: 35,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabLabel: {
+    fontSize: 9,
+    top: 6,
+    fontWeight: "500",
+  },
   fab: {
-    marginTop:40,
-   // alignItems: "flex-end",
-    //justifyContent: "flex-end",
+    marginTop: 40,
   },
 });
