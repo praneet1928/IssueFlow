@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StatusBar,
   View,
   Pressable,
   Keyboard,
@@ -17,7 +16,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-
+import { StatusBar } from "expo-status-bar";
 import { Ionicons } from '@expo/vector-icons';
 import Issueflow from "../../../assets/images/issueflow.svg";
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,6 +69,7 @@ const LoginScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.total}>
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <KeyboardAwareScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         enableOnAndroid={true}

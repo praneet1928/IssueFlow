@@ -16,17 +16,23 @@ export type IssueItem = {
 
   // ⬇️ BACKEND / LIFECYCLE FIELDS (OPTIONAL)
   createdAt?: string;
-  status?: "in progress" | "in review" | "completed";
+  status?: "not started" | "assigned" | "in progress" | "completed";
   assignedTo?: string;
-
+assignedAt?: string;
+completedAt?: string;
   // ⬇️ OPTIONAL CONTENT
   description?: string;
   images?: string[];
-
+ comments?: TicketComment[];
   // ⬇️ CLIENT-ONLY
   timestampMinutesAgo?: number;
 };
 
+export interface TicketComment {
+  id: string;
+  text: string;
+  createdAt: string;
+}
 
 
 export interface DeviceItem {

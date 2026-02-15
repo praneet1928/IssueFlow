@@ -7,15 +7,16 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import { useTickets } from "../../context/TicketContext";
+import type { IssueItem } from "../../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import type { IssueItem } from "../../types";
-
 import PrinterIcon from "../../../assets/images/printer.svg";
 import MonitorIcon from "../../../assets/images/monitor.svg";
 import WifiIcon from "../../../assets/images/wifirouter.svg";
 import GenericIcon from "../../../assets/images/GenericIcon.svg";
+import TicketFaded from "../../../assets/images/ticketfaded.svg";
 
 /* -------- ISSUE CARD -------- */
 function HistoryIssueCard({
@@ -25,8 +26,9 @@ function HistoryIssueCard({
   item: IssueItem;
   onDelete: (id: string) => void;
 }) {
+  
   const navigation = useNavigation<any>();
-
+  
   const getPriorityColor = (priority: IssueItem["priority"]) => {
     switch (priority) {
       case "critical":
@@ -52,24 +54,28 @@ function HistoryIssueCard({
         return <GenericIcon width={48} height={40} />;
     }
   };
+const { moveToActive } = useTickets();
 
-  const handleRaiseAgain = () => {
-    Alert.alert(
-      "Raise Issue Again",
-      "Do you want to raise this issue again?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: () => {
-            onDelete(item.id);                 // ✅ remove from history
-            navigation.navigate("Successfull");
-          },
+const handleRaiseAgain = () => {
+  Alert.alert(
+    "Raise Issue Again",
+    "Do you want to raise this issue again?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Confirm",
+        onPress: () => {
+          moveToActive(item);   
+          navigation.navigate("ClientTabs", {
+            screen: "ClientHome",
+            params: { showToast: false },
+          });
         },
-      ],
-      { cancelable: true }
-    );
-  };
+      },
+    ]
+  );
+};
+
 
   const priorityColor = getPriorityColor(item.priority);
 
@@ -118,31 +124,8 @@ function HistoryIssueCard({
 
 /* -------- SCREEN -------- */
 const HistoryScreen: React.FC = () => {
-  const [issues, setIssues] = React.useState<IssueItem[]>([
-    {
-      id: "his-1",
-      code: "#AD677",
-      priority: "moderate",
-      timestampMinutesAgo: 20,
-      title: "My printer is not getting connected to Wi-Fi",
-      location: "CSE Block 201",
-      categoryTags: [
-        { id: "tag-nw", label: "Network" },
-        { id: "tag-hw", label: "Hardware" },
-      ],
-      Device: "Printer",
-    },
-    {
-      id: "his-2",
-      code: "#AD521",
-      priority: "critical",
-      timestampMinutesAgo: 130,
-      title: "My Monitor is not showing the screen",
-      location: "ECE Block 107",
-      categoryTags: [{ id: "tag-hw", label: "Hardware" }],
-      Device: "Monitor",
-    },
-  ]);
+  const navigation = useNavigation();
+  const { history } = useTickets();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -153,26 +136,36 @@ const HistoryScreen: React.FC = () => {
       >
         <Text style={styles.title}>History</Text>
 
-        {issues.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              You have no resolved{"\n"}issues
+        {history.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.illustrationWrapper}>
+              <TicketFaded width={150} height={82} />
+            </View>
+
+            <Text style={styles.emptyTitle}>
+              You haven’t raised any issues yet
             </Text>
-            <TouchableOpacity style={styles.raiseRow}>
-              <Text style={styles.raiseText}>Raise an issue</Text>
-              <Text style={[styles.raisearrow, { top: -1 }]}> ➜</Text>
+
+            <Text style={styles.emptySubtitle}>
+              Start by reporting an issue when{"\n"}
+              something needs attention.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate("NewTicket")}
+            >
+              <Text style={styles.primaryButtonText}>
+                Raise an Issue
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
-          issues.map((item) => (
+          history.map((item: IssueItem) => (
             <HistoryIssueCard
               key={item.id}
               item={item}
-              onDelete={(id) =>
-                setIssues((prev) =>
-                  prev.filter((issue) => issue.id !== id)
-                )
-              }
+              onDelete={() => {}}
             />
           ))
         )}
@@ -180,6 +173,7 @@ const HistoryScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
+
 
 export default HistoryScreen;
 
@@ -330,4 +324,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FFFFFF",
   },
+  emptyContainer: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingHorizontal: 32,
+  marginTop: 80,
+},
+
+illustrationWrapper: {
+  marginBottom: 24,
+  opacity: 0.8,
+},
+
+emptyTitle: {
+  fontSize: 18,
+  fontWeight: "600",
+  fontFamily: "Poppins-Regular",
+  color: "#081A41",
+  textAlign: "center",
+  marginBottom: 8,
+},
+
+emptySubtitle: {
+  fontSize: 14,
+  color: "#6B7280",
+  textAlign: "center",
+  fontFamily: "Poppins-Regular",
+  lineHeight: 22,
+  marginBottom: 24,
+},
+
+primaryButton: {
+  backgroundColor: "#0B2C6F",
+  paddingVertical: 12,
+  paddingHorizontal: 26,
+  borderRadius: 10,
+},
+
+primaryButtonText: {
+  color: "#FFFFFF",
+  fontSize: 14,
+  fontFamily: "Poppins-Regular",
+  fontWeight: "600",
+},
+
 });

@@ -5,11 +5,11 @@ import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 
 import ClientHome from "./ClientHome";
 import ClientHistory from "./ClientHistory";
-import NewTicket from "./NewTicket";
+import NewTicket from "./cards/NewTicket";
 
-import HomeIcon from "../../../assets/images/Category.svg";
+import HomeIcon from "../../../assets/images/HomeIcon.svg";
 import RaiseIcon from "../../../assets/images/raise.svg";
-import TicketIcon from "../../../assets/images/TicketOutline.svg";
+import History from "../../../assets/images/History.svg";
 
 const Tab = createBottomTabNavigator();
 
@@ -53,16 +53,19 @@ export default function BottomTabs() {
   }}
 />
       <Tab.Screen
-        name="NewTicket"
-        component={NewTicket}
-        options={{
-          tabBarIcon: () => (
+  name="NewTicket"
+  component={NewTicket}
+  options={{
+    tabBarStyle: { display: "none" }, 
+    tabBarIcon: () => (
             <View style={styles.fab}>
               <RaiseIcon width={60} color={ACTIVE} />
             </View>
-          ),
-        }}
-      />
+          ), 
+  }}
+/>
+
+      
 
       <Tab.Screen
   name="ClientHistory"
@@ -70,7 +73,7 @@ export default function BottomTabs() {
   options={{
     tabBarIcon: ({ focused }) => (
       <View style={styles.tabItem}>
-        <TicketIcon width={24} color={focused ? ACTIVE : INACTIVE} />
+        <History width={32} color={focused ? ACTIVE : INACTIVE} />
         <Text
           style={[
             styles.tabLabel,
@@ -90,19 +93,22 @@ export default function BottomTabs() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 80,
+    height: "10%",
     backgroundColor: "#FFFFFF",
     borderTopWidth: 0.5,
     borderTopColor: "#E5E7EB",
   },
   tabItem: {
-    marginTop: 35,
+    marginTop: "100%",
     alignItems: "center",
-    justifyContent: "center",
   },
   tabLabel: {
-    fontSize: 9,
-    top: 6,
+    fontSize: 10,
+    top: 1,
+    //marginBottom: 1,
+    width: "5%",
+    marginTop: 2,
+    height: "100%",
     fontWeight: "500",
   },
   fab: {

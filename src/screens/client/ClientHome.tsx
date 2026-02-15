@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState,useCallback  } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,11 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-
+import { useFocusEffect, useRoute ,RouteProp,useNavigation} from "@react-navigation/native";
 import type { HomeScreenProps, IssueItem } from "../../types";
 import { useTickets } from "../../context/TicketContext";
 import BrandLogo from "../../../assets/images/brandlogo.svg";
@@ -21,15 +21,23 @@ import PrinterIcon from "../../../assets/images/printer.svg";
 import MonitorIcon from "../../../assets/images/monitor.svg";
 import WifiIcon from "../../../assets/images/wifirouter.svg";
 import GenericIcon from "../../../assets/images/GenericIcon.svg";
-import Arrow from "../../../assets/images/curvedarrow.svg";
+import TicketFaded from "../../../assets/images/ticketfaded.svg";
+import Raise from "../../../assets/images/raise.svg";
+import Tick from "../../../assets/images/Tick.svg";
+import {TabParamList ,RootStackParamList} from "../../types/navigation";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+
 /* ================= MOCK DATA ================= */
 
 const mockIssues: IssueItem[] = [
 ];
 
+
 /* ================= HEADER ================= */
 
 function AppHeader({ onOpenNotifications }: { onOpenNotifications?: () => void }) {
+  const navigation = useNavigation();
   return (
     <View style={styles.appHeader}>
       <View style={styles.brandRow}>
@@ -39,15 +47,14 @@ function AppHeader({ onOpenNotifications }: { onOpenNotifications?: () => void }
 
       <View style={styles.headerRight}>
         <TouchableOpacity onPress={onOpenNotifications} style={styles.iconButton}>
-          <Ionicons name="notifications-outline" size={22} color="#000" />
+          <Ionicons name="notifications-outline" size={22} color="#081A41" />
         </TouchableOpacity>
-
-        <Image
-          source={{
-            uri: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80",
-          }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate("ClientProfile")}
+        >
+        <Avatar name="Rishi Sayal" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -130,26 +137,100 @@ function IssueCard({
     </TouchableOpacity>
   );
 }
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+};
+
+function Avatar({ name }: { name: string }) {
+  const letter = name.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <View style={[styles.avatarCircle]}>
+      <Text style={styles.avatarText}>{letter}</Text>
+    </View>
+  );
+}
 
 /* ================= MAIN SCREEN ================= */
 
 const ClientHomeScreen: React.FC<HomeScreenProps> = ({
-  userName = "john",
+  
+  userName = "Rishi Sayal",
   issues = mockIssues,
   isLoading = false,
   error = null,
   onOpenNotifications,
 }) => {
-  const navigation = useNavigation();
+ type HomeNavProp = NativeStackNavigationProp<
+  RootStackParamList
+>;
+
+const navigation = useNavigation<HomeNavProp>();
   const { width } = useWindowDimensions();
+  const [showToast, setShowToast] = useState(false);
+type ClientHomeRouteProp = RouteProp<
+  TabParamList,
+  "ClientHome"
+>;
+const route = useRoute<ClientHomeRouteProp>();
   const contentPadding = useMemo(() => (width < 360 ? 12 : 16), [width]);
   const { tickets } = useTickets();
   const allIssues = [...tickets, ...issues];
 const isEmpty = allIssues.length === 0;
 
+const [showTutorial, setShowTutorial] = useState(false);
+const [disableTutorial, setDisableTutorial] = useState(false);
+
+useEffect(() => {
+  let timer: ReturnType<typeof setTimeout>;
+
+  if (route.params?.showToast) {
+    setShowToast(true);
+
+    // Remove the param completely
+    navigation.setParams({});
+    
+    timer = setTimeout(() => {
+      setShowToast(false);
+    }, 5000);
+  }
+
+  return () => {
+    if (timer) clearTimeout(timer);
+  };
+}, [route.params?.showToast]);
+
+
+
+
+useEffect(() => {
+  if (isEmpty && !showToast && !disableTutorial) {
+    const showTimer = setTimeout(() => {
+      setShowTutorial(true);
+
+      const hideTimer = setTimeout(() => {
+        setShowTutorial(false);
+      }, 5100);
+
+      return () => clearTimeout(hideTimer);
+    }, 2000);
+
+    return () => clearTimeout(showTimer);
+  }
+}, [isEmpty, showToast]);
+
+
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <Text>Loading...</Text>
       </SafeAreaView>
     );
@@ -157,28 +238,70 @@ const isEmpty = allIssues.length === 0;
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <Text style={styles.errorText}>{error}</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <StatusBar style="dark" />
 
       <View style={[styles.container, { paddingHorizontal: contentPadding }]}>
         <AppHeader onOpenNotifications={onOpenNotifications} />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.greeting}>Hello, {userName}!</Text>
-          <Text style={styles.sectionTitle}>Issues Raised by you</Text>
+          <Text style={styles.sectionTitle}>Raised Issues</Text>
 
-          {isEmpty ? (
-  <View style={styles.emptyState}>
-    <Text style={styles.emptyTitle}>No issues exist</Text>
-    <Text style={styles.emptySubtitle}>Want to raise an issue?</Text>
+{isEmpty ? (
+  <>
+    {/* EMPTY STATE */}
+    <View style={styles.emptyContainer}>
+      {/* Illustration */}
+      <View style={styles.illustrationWrapper}>
+        <TicketFaded
+          width={150}
+          height={82}
+        />
+      </View>
+
+      <Text style={styles.emptyTitle}>
+        No active issues
+      </Text>
+
+      <Text style={styles.emptySubtitle}>
+        Start by reporting an issue when{"\n"}
+        something needs attention.
+      </Text>
+
+      {/* PRIMARY CTA */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.primaryButton}
+        onPress={() => navigation.navigate("NewTicket")}
+      >
+        <Text style={styles.primaryButtonText}>Raise an issue</Text>
+      </TouchableOpacity>
+    </View>
+
+    {/* FLOATING TUTORIAL HINT */}
+{isEmpty && showTutorial && !showToast && (
+  <View style={styles.hintWrapper} pointerEvents="none">
+    <View style={styles.hintBubble}>
+      <View style={styles.hintIcon}>
+        <Raise width={32} height={42} color="#1E40AF" />
+      </View>
+      <Text style={styles.hintText}>
+        Start by reporting an issue
+      </Text>
+    </View>
+    <View style={styles.hintNotch} />
   </View>
+)}
+
+
+  </>
 ) : (
   <FlatList
     data={allIssues}
@@ -194,9 +317,19 @@ const isEmpty = allIssues.length === 0;
     scrollEnabled={false}
   />
 )}
-{isEmpty && <Arrow width={'100%'} height={'50%'} style={styles.arrow} />}
+    </ScrollView>
+{showToast && (
+  <View style={styles.toast}>
+    <View style={styles.toastIcon}>
+      <Tick />
+    </View>
 
-        </ScrollView>
+    <Text style={styles.toastText}>
+      Thank you! Your feedback helps make IssueFlow better for everyone
+    </Text>
+  </View>
+)}
+
       </View>
     </SafeAreaView>
   );
@@ -209,7 +342,8 @@ export default ClientHomeScreen;
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#ffffff",
+
   },
   container: {
     flex: 1,
@@ -241,23 +375,12 @@ const styles = StyleSheet.create({
     padding: 8,
     marginRight: 16,
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#E2E8F0",
-  },
 
-  greeting: {
-    fontSize: 18,
-    color: "#4B4B4B",
-    marginTop: "5%",
-    fontFamily: "Poppins-Regular",
-  },
   sectionTitle: {
-    fontSize: 42,
-    color: "#103482",
+    fontSize: 28,
+    color: "#081A41",
     fontWeight: "600",
+    marginTop: 30,
     marginBottom: 20,
   },
   errorText: {
@@ -267,6 +390,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
   },
+avatarCircle: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: "#0D2B6C",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+avatarText: {
+  color: "#fff",
+  fontSize: 16,
+  fontWeight: "700",
+  fontFamily: "Poppins-Bold",
+},
 
   card: {
     backgroundColor: "#FFFFFF",
@@ -299,40 +437,52 @@ const styles = StyleSheet.create({
   },
   /* ===== EMPTY STATE ===== */
 
-emptyState: {
-  marginTop: 180,
-  alignItems: "flex-end",
+emptyContainer: {
+  marginTop: 120,
+  alignItems: "center",
+  paddingHorizontal: 32,
+},
+
+illustrationWrapper: {
+  marginBottom: 24,
+  opacity: 0.8,
 },
 
 emptyTitle: {
-  fontSize: 32,
+  fontSize: 20,
+  fontWeight: "600",
   fontFamily: "Poppins-Regular",
-  fontWeight: "700",
-  color: "#ff0000",
-  marginBottom: 0,
+  color: "#081A41",
+  textAlign: "center",
+  marginBottom: 8,
 },
 
 emptySubtitle: {
+  fontSize: 16,
+  color: "#6B7280",
+  textAlign: "center",
   fontFamily: "Poppins-Regular",
-  fontSize: 14,
-  color: "#000000",
+  lineHeight: 22,
+  marginBottom: 24,
 },
 
-/* ===== CURVY ARROW ===== */
+/* PRIMARY BUTTON */
 
-arrowWrapper: {
-  position: "absolute",
-  bottom: 90, // above tab bar
-  right: 24,
+primaryButton: {
+  backgroundColor: "#0B2C6F",
+  paddingVertical: 12,
+  paddingHorizontal: 26,
+  borderRadius: 10,
 },
 
-arrow: {
-  fontSize: 48,
-  top: 40,
-  left: 65,
+primaryButtonText: {
   color: "#ffffff",
-  transform: [{ rotate: "180deg" }],
+  fontSize: 14,
+  fontFamily: "Poppins-Regular",
+  fontWeight: "600",
 },
+
+
 
   issueTitle: {
     fontSize: 15,
@@ -374,4 +524,79 @@ arrow: {
     fontWeight: "600",
     fontSize: 12,
   },
+  /* ===== FLOATING TUTORIAL HINT (EXACT SHAPE) ===== */
+
+hintWrapper: {
+  position: "absolute",
+  top: "135%", // adjust to sit above FAB
+  width: "100%",
+  alignItems: "center",
+},
+
+hintBubble: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#EEF2FF",
+  paddingVertical: 12,
+  paddingHorizontal: 18,
+  borderRadius: 12,
+},
+
+hintIcon: {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: "#DBEAFE",
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 10,
+},
+
+hintText: {
+  fontSize: 14,
+  fontWeight: "600",
+  fontFamily: "Poppins-Regular",
+  color: "#0B2C6F",
+},
+
+/* This creates the *integrated* pointer */
+hintNotch: {
+  width: 16,
+  height: 16,
+  backgroundColor: "#EEF2FF",
+  transform: [{ rotate: "45deg" }],
+  marginTop: -9,           // pulls into bubble
+},
+
+toast: {
+  position: "absolute",
+  top: "89%",
+  left: 20,
+  right: 20,
+  backgroundColor: "#E8EEF9",
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 16,
+  borderRadius: 20,
+},
+
+toastIcon: {
+  width: 36,
+  height: 36,
+  borderRadius: 20,
+  backgroundColor: "#103482",
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 12,
+},
+
+toastText: {
+  flex: 1,
+  color: "#103482",
+  fontFamily: "Poppins-Regular",
+  fontSize: 12,
+  fontWeight: "500",
+},
+
+
 });

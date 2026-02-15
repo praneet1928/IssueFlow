@@ -13,6 +13,12 @@ import Successfull from './src/screens/client/cards/successfull';
 import { TicketProvider } from "./src/context/TicketContext";
 
 import { RootStackParamList } from './src/types/navigation';
+import ClientProfile from './src/screens/client/ClientProfile';
+import ClientSettings from './src/screens/client/ClientSettings';
+import TermsPrivacy from './src/screens/TermsPrivacy';
+import HelpCentre from './src/screens/HelpCentre';
+import ReportIssue from './src/screens/ReportIssue';
+import NewTicket from './src/screens/client/cards/NewTicket';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -25,6 +31,11 @@ export default function App() {
           initialRouteName="Login"
           screenOptions={{ headerShown: false }}
         >
+          {/* ---------- SETTINGS ---------- */}
+          <Stack.Screen name="TermsPrivacy" component={TermsPrivacy} />
+          <Stack.Screen name="HelpCentre" component={HelpCentre} />
+          <Stack.Screen name="ReportIssue" component={ReportIssue} />
+
           {/* ---------- AUTH FLOW ---------- */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Forgot" component={ForgotScreen} />
@@ -34,7 +45,10 @@ export default function App() {
 
           {/* ---------- CLIENT APP ---------- */}
           <Stack.Screen name="ClientTabs" component={BottomTabs} />
+          <Stack.Screen name="NewTicket" component={NewTicket} />
           <Stack.Screen name="TicketDetailed" component={TicketDetailed} />
+          <Stack.Screen name="ClientProfile" component={ClientProfile} />
+          <Stack.Screen name="ClientSettings" component={ClientSettings} />
 
 
           {/* ---------- MODAL / OVERLAY ---------- */}
