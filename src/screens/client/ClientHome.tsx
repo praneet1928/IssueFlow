@@ -4,8 +4,10 @@ import {
   Text,
   StyleSheet,
   Image,
+  Alert,
   TouchableOpacity,
   FlatList,
+  Platform,
   ScrollView,
   useWindowDimensions,
 } from "react-native";
@@ -16,7 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRoute ,RouteProp,useNavigation} from "@react-navigation/native";
 import type { HomeScreenProps, IssueItem } from "../../types";
 import { useTickets } from "../../context/TicketContext";
-import BrandLogo from "../../../assets/images/brandlogo.svg";
+import IssueFlow from "../../../assets/images/issueflow.svg";
+import Bell from "../../../assets/images/BellOutline.svg";
 import PrinterIcon from "../../../assets/images/printer.svg";
 import MonitorIcon from "../../../assets/images/monitor.svg";
 import WifiIcon from "../../../assets/images/wifirouter.svg";
@@ -26,40 +29,52 @@ import Raise from "../../../assets/images/raise.svg";
 import Tick from "../../../assets/images/Tick.svg";
 import {TabParamList ,RootStackParamList} from "../../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNotifications } from "../../context/NotificationContext";
 
 
-/* ================= MOCK DATA ================= */
 
-const mockIssues: IssueItem[] = [
-];
 
 
 /* ================= HEADER ================= */
 
-function AppHeader({ onOpenNotifications }: { onOpenNotifications?: () => void }) {
-  const navigation = useNavigation();
+function AppHeader() {
+  const navigation = useNavigation<any>();
+  const { notifications } = useNotifications();
+
+  const hasUnread = notifications.some(n => !n.read);
+
   return (
     <View style={styles.appHeader}>
       <View style={styles.brandRow}>
-        <BrandLogo height={25} />
-        <Text style={styles.brandText}>IssueFlow</Text>
+        <IssueFlow height={40} width={148} />
       </View>
 
       <View style={styles.headerRight}>
-        <TouchableOpacity onPress={onOpenNotifications} style={styles.iconButton}>
-          <Ionicons name="notifications-outline" size={22} color="#081A41" />
+
+        {/* 🔔 Notifications */}
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("ClientNotifications")}
+        >
+          <View style={{ position: "relative" }}>
+            <Bell height={24} width={24} />
+
+            {hasUnread && <View style={styles.Dot} />}
+          </View>
         </TouchableOpacity>
+
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => navigation.navigate("ClientProfile")}
         >
-        <Avatar name="Rishi Sayal" />
+          <Avatar name="Rishi Sayal" />
         </TouchableOpacity>
+
       </View>
     </View>
   );
 }
-
 /* ================= ISSUE CARD ================= */
 
 function IssueCard({
@@ -69,81 +84,97 @@ function IssueCard({
   item: IssueItem;
   onPress: () => void;
 }) {
-  const getPriorityColor = (priority: IssueItem["priority"]) => {
-    switch (priority) {
-      case "critical":
-        return "#FF3B30";
-      case "moderate":
-        return "#F68D2B";
-      case "low":
-        return "#8E8E93";
-      default:
-        return "#000";
-    }
+  const navigation = useNavigation();
+    const {
+      tickets,
+      history,
+      addComment,
+      removeTicket,
+      discardTicket,
+      resolveTicket,
+      assignTicket,
+    } = useTickets();
+  const confirmClose = () => {
+    Alert.alert(
+      "Close Issue",
+      "Are you sure you want to close the issue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Close",
+          style: "destructive",
+          onPress: () => {
+            discardTicket(item.id);
+          },
+        },
+      ]
+    );
   };
-
-  const getDeviceIcon = (device: string) => {
-    switch (device.toLowerCase()) {
-      case "printer":
-        return <PrinterIcon width={48} height={42} />;
-      case "monitor":
-        return <MonitorIcon width={48} height={40} />;
-      case "wifi":
-        return <WifiIcon width={48} height={40} />;
-      default:
-        return <GenericIcon width={48} height={40} />;
-    }
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+      const getStatusStyle = (status?: string) => {
+  const s = status?.toLowerCase();
+  if (s === "not started") return { bg: "#E3E3E3", text: "#A0A0A0" };
+  if (s === "in progress") return { bg: "#B8D1FF", text: "#4D8CFF" };
+  if (s === "completed") return { bg: "#A9DFBF", text: "#27AE60" };
+  return { bg: "#EDF0F3", text: "#A0A0A0" };
+};
+  const getRelativeTime = (date: string) => {
+    const now = new Date();
+    const past = new Date(date);
+    const diff = Math.floor((now.getTime() - past.getTime()) / 1000);
+  
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hrs ago`;
+    return `${Math.floor(diff / 86400)} d ago`;
   };
-
+  const statusStyle = getStatusStyle(item.status);
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
-      <View style={styles.card}>
-        <View style={styles.issueMeta}>
-          <MaterialCommunityIcons
-            name="ticket"
-            size={22}
-            color={getPriorityColor(item.priority)}
-          />
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+  <View style={styles.card}>
 
-          <Text
-            style={[
-              styles.issueCodeText,
-              { color: getPriorityColor(item.priority) },
-            ]}
-          >
-            {item.code}
+    {/* TIME */}
+    <Text style={styles.timeText}>
+      {getRelativeTime(item.createdAt)}
+    </Text>
+
+    {/* TITLE */}
+    <Text style={styles.issueTitle}>
+      {item.title}
+    </Text>
+
+    {/* DIVIDER */}
+    <View style={styles.divider} />
+
+    {/* STATUS SECTION */}
+    <View style={styles.bottomRow}>
+      
+      <View>
+        <Text style={styles.statusLabel}>
+          Current status
+        </Text>
+
+        <View style={[styles.statusBadge,{ backgroundColor: statusStyle.bg }]}>
+          <Text style={{ color: statusStyle.text , fontFamily:"Poppins-Regular", fontWeight: "600"}}>
+          ●  {capitalize(item.status ?? "unknown")}
           </Text>
-
-          <Text style={styles.issueTime}>
-            {item.timestampMinutesAgo}1 mins ago
-          </Text>
-        </View>
-
-        <Text style={styles.issueTitle}>{item.title}</Text>
-        <Text style={styles.issueLocation}>{item.location}</Text>
-
-        <View style={styles.issueImage}>
-          {getDeviceIcon(item.Device)}
-        </View>
-
-        <View style={styles.tagRow}>
-          {item.categoryTags.map((tag) => (
-            <View key={tag.id} style={styles.tagChip}>
-              <Text style={styles.tagText}>{tag.label}</Text>
-            </View>
-          ))}
         </View>
       </View>
-    </TouchableOpacity>
+
+      {/* END ISSUE BUTTON */}
+      <TouchableOpacity style={styles.endButton} onPress={confirmClose}>
+        <Text style={styles.endButtonText}>
+          End Issue
+        </Text>
+      </TouchableOpacity>
+
+    </View>
+
+  </View>
+</TouchableOpacity>
   );
 }
-const stringToColor = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
 
-};
 
 function Avatar({ name }: { name: string }) {
   const letter = name.split(" ")
@@ -164,7 +195,6 @@ function Avatar({ name }: { name: string }) {
 const ClientHomeScreen: React.FC<HomeScreenProps> = ({
   
   userName = "Rishi Sayal",
-  issues = mockIssues,
   isLoading = false,
   error = null,
   onOpenNotifications,
@@ -172,7 +202,6 @@ const ClientHomeScreen: React.FC<HomeScreenProps> = ({
  type HomeNavProp = NativeStackNavigationProp<
   RootStackParamList
 >;
-
 const navigation = useNavigation<HomeNavProp>();
   const { width } = useWindowDimensions();
   const [showToast, setShowToast] = useState(false);
@@ -180,12 +209,31 @@ type ClientHomeRouteProp = RouteProp<
   TabParamList,
   "ClientHome"
 >;
+
+
 const route = useRoute<ClientHomeRouteProp>();
   const contentPadding = useMemo(() => (width < 360 ? 12 : 16), [width]);
   const { tickets } = useTickets();
-  const allIssues = [...tickets, ...issues];
+  const allIssues = [...tickets];
 const isEmpty = allIssues.length === 0;
+const insets = useSafeAreaInsets();
+ 
+const tabBarHeight = 60; 
+let bottomValue;
 
+if (Platform.OS === "android") {
+  if (insets.bottom > 0 && insets.bottom < 48) {
+    bottomValue = insets.bottom-200;
+  } else if (insets.bottom >= 48) {
+    bottomValue = insets.bottom;
+  } else {
+    bottomValue = -300;
+  }
+} else {
+  bottomValue = insets.bottom - 300;
+}
+
+const totalBottomOffset = tabBarHeight + bottomValue + 10;
 const [showTutorial, setShowTutorial] = useState(false);
 const [disableTutorial, setDisableTutorial] = useState(false);
 
@@ -249,7 +297,7 @@ useEffect(() => {
       <StatusBar style="dark" />
 
       <View style={[styles.container, { paddingHorizontal: contentPadding }]}>
-        <AppHeader onOpenNotifications={onOpenNotifications} />
+        <AppHeader />
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>Raised Issues</Text>
@@ -271,8 +319,7 @@ useEffect(() => {
       </Text>
 
       <Text style={styles.emptySubtitle}>
-        Start by reporting an issue when{"\n"}
-        something needs attention.
+        Start by reporting an issue when something needs attention.
       </Text>
 
       {/* PRIMARY CTA */}
@@ -287,7 +334,7 @@ useEffect(() => {
 
     {/* FLOATING TUTORIAL HINT */}
 {isEmpty && showTutorial && !showToast && (
-  <View style={styles.hintWrapper} pointerEvents="none">
+  <View style={[styles.hintWrapper,{bottom: totalBottomOffset} ]} pointerEvents="none">
     <View style={styles.hintBubble}>
       <View style={styles.hintIcon}>
         <Raise width={32} height={42} color="#1E40AF" />
@@ -310,7 +357,9 @@ useEffect(() => {
       <IssueCard
         item={item}
         onPress={() =>
-          navigation.navigate("TicketDetailed", { issue: item })
+         navigation.navigate("TicketDetailed", {
+  issueId: item.id,
+})
         }
       />
     )}
@@ -358,14 +407,6 @@ const styles = StyleSheet.create({
   },
   brandRow: {
     flexDirection: "row",
-    alignItems: "center",
-  },
-  brandText: {
-    marginLeft: 6,
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#103482",
-    fontFamily: "Poppins-Bold",
   },
   headerRight: {
     flexDirection: "row",
@@ -373,14 +414,14 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
-    marginRight: 16,
+    marginRight: 19,
   },
 
   sectionTitle: {
     fontSize: 28,
     color: "#081A41",
     fontWeight: "600",
-    marginTop: 30,
+    marginTop: 20,
     marginBottom: 20,
   },
   errorText: {
@@ -405,20 +446,91 @@ avatarText: {
   fontWeight: "700",
   fontFamily: "Poppins-Bold",
 },
-
-  card: {
-    backgroundColor: "#FFFFFF",
+ card: {
+    backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 0.5,
-    borderColor: "#0000001A",
-    shadowColor: "#a7a7a7ff",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#CED6E0",
   },
+
+  timeText: {
+    fontSize: 12,
+    color: "#A0A0A0",
+    fontFamily: "Poppins-Regular",
+    marginBottom: 8,
+  },
+
+  issueTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4B4B4B",
+    fontFamily: "Poppins-Regular",
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+
+  divider: {
+    height: 0.9,
+    backgroundColor: "#CED6E0",
+    marginBottom: 12,
+  },
+
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+
+  statusLabel: {
+    fontSize: 13,
+    color: "#4B4B4B",
+    fontFamily: "Poppins-Regular",
+    marginBottom: 6,
+  },
+
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#DBEAFE",
+    height: 32,
+    width: "70%",
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+     marginBottom: 55,
+    borderRadius: 16,
+  },
+
+
+  statusText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#2563EB",
+    fontFamily: "Poppins-Regular",
+  },
+
+  endButton: {
+    borderWidth: 1,
+    borderColor: "#FF3B30",
+    borderRadius: 24,
+    width: 114,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+
+  endButtonText: {
+    color: "#FF3B30",
+    fontSize: 15,
+    fontWeight: "500",
+    fontFamily: "Poppins-Regular",
+  },
+
+  
   issueMeta: {
     flexDirection: "row",
     alignItems: "center",
@@ -483,13 +595,6 @@ primaryButtonText: {
 },
 
 
-
-  issueTitle: {
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "500",
-    marginBottom: 4,
-  },
   issueLocation: {
     fontSize: 13,
     color: "#9CA3AF",
@@ -528,7 +633,6 @@ primaryButtonText: {
 
 hintWrapper: {
   position: "absolute",
-  top: "135%", // adjust to sit above FAB
   width: "100%",
   alignItems: "center",
 },
@@ -598,5 +702,13 @@ toastText: {
   fontWeight: "500",
 },
 
-
+Dot: {
+  position: "absolute",
+  top: 0,
+  right: 2,
+  width: 5,
+  height: 5,
+  borderRadius: 18,
+  backgroundColor: "#081A41",
+}
 });

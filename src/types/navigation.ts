@@ -17,11 +17,14 @@ export type RootStackParamList = {
   ClientProfile: undefined;
   TermsPrivacy: undefined;
   HelpCentre: undefined;
+  ResetPassword: undefined;
   ReportIssue: undefined;
   ClientSettings: undefined;
-  TicketDetailed: {issue: IssueItem; };
-  Unactive: {email: string};
+  TicketDetailed: { issueId: string; openComments?: boolean };
+  OtpScreen: { email: string };
+  ClientNotifications: undefined;
 };
+
 
 declare global {
   namespace ReactNavigation {

@@ -4,11 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
   TextInput,
   ScrollView,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider} from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import Report from "./../../assets/images/report.svg";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "src/types/navigation";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ReportIssueScreen() {
 
@@ -112,11 +115,10 @@ const removeImage = (uri: string) => {
       </TouchableOpacity>
     );
   };
-
+const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" backgroundColor="#FFFFFF" />
-
+     <SafeAreaProvider style={styles.safe}>
+      <StatusBar style="dark" backgroundColor="#fff"/>
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -132,8 +134,21 @@ const removeImage = (uri: string) => {
 
         <View style={{ width: 22 }} />
       </View>
+      <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          >
+      <ScrollView
+              style={styles.container}
+              contentContainerStyle={{
+                paddingTop: 20,
+                paddingBottom: 1 + insets.bottom,
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
 
-      <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.heading}>
           What is the technical problem?
         </Text>
@@ -200,8 +215,8 @@ const removeImage = (uri: string) => {
   </View>
 </View>
 
-      </ScrollView>
 
+      </ScrollView>
       {/* REPORT BUTTON */}
       <TouchableOpacity
         activeOpacity={0.8}
@@ -213,7 +228,8 @@ const removeImage = (uri: string) => {
       >
         <Text style={[styles.reportText,!isValid && styles.reportTextDisabled]}>Report</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </SafeAreaProvider>
   );
 }
 
@@ -222,13 +238,14 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingTop: 50,
     paddingVertical: 18,
   },
 
@@ -250,7 +267,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#081A41",
     fontFamily: "Poppins-Regular",
-    marginTop: 18,
+    marginTop: 1,
     marginBottom: 10,
   },
 
@@ -311,11 +328,11 @@ const styles = StyleSheet.create({
   },
 
   reportButton: {
-    marginBottom: 30,
+    marginBottom: 20,
     marginTop: 10,
     backgroundColor: "#17377F",
     paddingVertical: 18,
-    borderRadius: 35,
+    borderRadius: 28,
     alignItems: "center",
   },
 
@@ -356,7 +373,7 @@ imagePicker: {
   alignItems: "center",
   justifyContent: "center",
 },
-
+ container: { flex: 1, backgroundColor: "#fff" },
 imagePreview: {
   width: "100%",
   height: "100%",

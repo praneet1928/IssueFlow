@@ -11,122 +11,186 @@ import { useTickets } from "../../context/TicketContext";
 import type { IssueItem } from "../../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import PrinterIcon from "../../../assets/images/printer.svg";
-import MonitorIcon from "../../../assets/images/monitor.svg";
-import WifiIcon from "../../../assets/images/wifirouter.svg";
-import GenericIcon from "../../../assets/images/GenericIcon.svg";
+import {  CompositeNavigationProp,useNavigation,RouteProp } from "@react-navigation/native";
+import {TabParamList ,RootStackParamList} from "../../types/navigation";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import TicketFaded from "../../../assets/images/ticketfaded.svg";
+import Path from "../../../assets/images/path.svg";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+
 
 /* -------- ISSUE CARD -------- */
 function HistoryIssueCard({
   item,
-  onDelete,
 }: {
   item: IssueItem;
-  onDelete: (id: string) => void;
 }) {
-  
-  const navigation = useNavigation<any>();
-  
-  const getPriorityColor = (priority: IssueItem["priority"]) => {
-    switch (priority) {
-      case "critical":
-        return "#FF3B30";
-      case "moderate":
-        return "#F68D2B";
-      case "low":
-        return "#8E8E93";
-      default:
-        return "#000";
-    }
-  };
+  type HistoryScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<TabParamList, "ClientHistory">,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
-  const getDeviceIcon = (device: string) => {
-    switch (device.toLowerCase()) {
-      case "printer":
-        return <PrinterIcon width={48} height={42} />;
-      case "monitor":
-        return <MonitorIcon width={48} height={40} />;
-      case "wifi":
-        return <WifiIcon width={48} height={40} />;
-      default:
-        return <GenericIcon width={48} height={40} />;
-    }
-  };
-const { moveToActive } = useTickets();
+const navigation = useNavigation<HistoryScreenNavigationProp>();
+  const getRelativeTime = (date?: string) => {
+  if (!date) return "";
+    
+  const now = new Date();
+  const past = new Date(date);
+  const diff = Math.floor((now.getTime() - past.getTime()) / 1000);
 
-const handleRaiseAgain = () => {
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+  const { tickets } = useTickets();
+  const isCompleted = item.status === "completed";
+  const isDiscarded = item.status === "discarded";
+  const showTechnician =
+    isCompleted && item.assignedTo; 
+    
+  const { raiseAgain ,removeTicket} = useTickets();
+  const headerColor = isCompleted ? "#8CABEC" : "#8CABEC";
+  const hasActiveInstance = tickets.some(
+  t =>
+    t.title === item.title &&
+    t.status !== "completed" &&
+    t.status !== "discarded"
+);
+const handleRaisePress = () => {
+  // 🛑 Safety guard
+  if (hasActiveInstance) return;
+
   Alert.alert(
     "Raise Issue Again",
-    "Do you want to raise this issue again?",
+    "A new ticket will be created with a fresh timeline. Continue?",
     [
-      { text: "Cancel", style: "cancel" },
       {
-        text: "Confirm",
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Raise",
         onPress: () => {
-          moveToActive(item);   
-          navigation.navigate("ClientTabs", {
-            screen: "ClientHome",
-            params: { showToast: false },
-          });
+          const newId = raiseAgain(item);
+
+          navigation.navigate("Successfull");
         },
       },
     ]
   );
 };
-
-
-  const priorityColor = getPriorityColor(item.priority);
-
   return (
-    <View style={styles.card}>
-      {/* Meta */}
-      <View style={styles.issueMeta}>
-        <MaterialCommunityIcons
-          name="ticket"
-          size={22}
-          color={priorityColor}
-        />
-        <Text style={[styles.issueCodeText, { color: priorityColor }]}>
-          {item.code}
-        </Text>
-        <Text style={styles.issueTime}>
-          {item.timestampMinutesAgo} mins ago
-        </Text>
-      </View>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      style={styles.card}
+      onPress={() =>
+       navigation.navigate("TicketDetailed", {
+  issueId: item.id,
+})}
+    >
+      {/* Header */}
+      <Text style={[styles.historyLabel, { color: headerColor }]}>
+        {getRelativeTime(
+          isCompleted ? item.completedAt : item.completedAt
+        )}
+      </Text>
 
-      {/* Content */}
+      {/* Title */}
       <Text style={styles.issueTitle}>{item.title}</Text>
-      <Text style={styles.issueLocation}>{item.location}</Text>
 
-      <View style={styles.issueImage}>{getDeviceIcon(item.Device)}</View>
+      <View style={styles.divider} />
 
-      {/* Tags + Raise again */}
-      <View style={styles.tagRow}>
-        {item.categoryTags.map((tag) => (
-          <View key={tag.id} style={styles.tagChip}>
-            <Text style={styles.tagText}>{tag.label}</Text>
-          </View>
-        ))}
+      {/* Status */}
+      <Text style={styles.sectionLabel}>Status</Text>
 
-        <TouchableOpacity
-          style={styles.raiseAgainRow}
-          onPress={handleRaiseAgain}
+      <View
+        style={[
+          styles.statusBadge,
+          {
+            backgroundColor: isCompleted ? "#A9DFBF" : "#EDF0F3",
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.dot,
+            { backgroundColor: isCompleted ? "#27AE60" : "#A0A0A0" },
+          ]}
+        />
+        <Text
+          style={{
+            color: isCompleted ? "#27AE60" : "#A0A0A0",
+            fontWeight: "600", fontFamily: "Poppins-Regular"
+          }}
         >
-          <Text style={[styles.raiseAgainArrow, { top: -1 }]}>⟳ </Text>
-          <Text style={styles.raiseAgainText}>Raise again</Text>
-        </TouchableOpacity>
+          {isCompleted ? "Completed" : "Discarded"}
+        </Text>
       </View>
-    </View>
+
+      {/* ✅ Show Technician Only If Completed */}
+      {showTechnician && (
+        <>
+          <Text style={[styles.sectionLabel, { marginTop: 14 }]}>
+            Resolved by
+          </Text>
+
+          <View style={styles.techRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {item.assignedTo?.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.techName}>{item.assignedTo}</Text>
+          </View>
+        </>
+      )}
+
+      {/* Bottom Row */}
+<View style={styles.cardBottomRow}>
+  <View style={{ width: 10 }} />
+
+  <TouchableOpacity
+    style={[
+      styles.raiseButton,
+      hasActiveInstance && styles.raiseButtonDisabled
+    ]}
+    disabled={hasActiveInstance}
+    onPress={handleRaisePress}
+  >
+    <Path
+      width={16}
+      color={hasActiveInstance ? "#A0A0A0" : "#FFFFFF"}
+      style={styles.raiseIcon}
+    />
+
+    <Text
+      style={[
+        styles.raiseText,
+        hasActiveInstance && styles.raiseTextDisabled
+      ]}
+    >
+      {hasActiveInstance
+        ? "Active Issue Ongoing"
+        : "Raise again"}
+    </Text>
+  </TouchableOpacity>
+</View>
+  </TouchableOpacity>
   );
 }
 
 /* -------- SCREEN -------- */
 const HistoryScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { history } = useTickets();
-
+  const { history, removeTicket } = useTickets();
+  const sortedHistory = React.useMemo(() => {
+  return [...history].sort((a, b) => {
+    const dateA = new Date(a.completedAt ?? 0).getTime();
+    const dateB = new Date(b.completedAt ?? 0).getTime();
+    return dateB - dateA; // recent → old
+  });
+}, [history]);
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -143,32 +207,22 @@ const HistoryScreen: React.FC = () => {
             </View>
 
             <Text style={styles.emptyTitle}>
-              You haven’t raised any issues yet
+              No resolved issues yet
             </Text>
 
             <Text style={styles.emptySubtitle}>
-              Start by reporting an issue when{"\n"}
-              something needs attention.
+              When an issue is fixed or closed, you'll see it here.
             </Text>
 
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => navigation.navigate("NewTicket")}
-            >
-              <Text style={styles.primaryButtonText}>
-                Raise an Issue
-              </Text>
-            </TouchableOpacity>
           </View>
-        ) : (
-          history.map((item: IssueItem) => (
-            <HistoryIssueCard
-              key={item.id}
-              item={item}
-              onDelete={() => {}}
-            />
-          ))
-        )}
+       ) : (
+  sortedHistory.map((item: IssueItem) => (
+    <HistoryIssueCard
+      key={item.id}
+      item={item}
+    />
+  ))
+)}
       </ScrollView>
     </SafeAreaView>
   );
@@ -216,10 +270,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  raiseText: {
-    fontSize: 16,
-    color: "#A0A0A0",
-  },
+
 
   raisearrow: {
     fontSize: 18,
@@ -231,13 +282,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     marginBottom: 14,
-    borderWidth: 0.5,
-    borderColor: "#0000001A",
-    shadowColor: "#a7a7a7",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#CED6E0",
   },
 
   issueMeta: {
@@ -257,12 +303,14 @@ const styles = StyleSheet.create({
   issueTime: {
     fontSize: 12,
     color: "#9CA3AF",
+    fontFamily: "Poppins-Regular",
   },
 
   issueTitle: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4B4B4B",
+    fontFamily: "Poppins-Regular",
     marginBottom: 4,
   },
 
@@ -304,32 +352,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  raiseAgainRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: "auto",
-    backgroundColor: "#103482",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  raiseAgainText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontWeight: "500",
-  },
-
-  raiseAgainArrow: {
-    fontSize: 18,
-    color: "#FFFFFF",
-  },
   emptyContainer: {
   flex: 1,
   justifyContent: "center",
   alignItems: "center",
   paddingHorizontal: 32,
-  marginTop: 80,
+  marginTop: 180,
 },
 
 illustrationWrapper: {
@@ -350,6 +378,7 @@ emptySubtitle: {
   fontSize: 14,
   color: "#6B7280",
   textAlign: "center",
+  fontWeight: "500",
   fontFamily: "Poppins-Regular",
   lineHeight: 22,
   marginBottom: 24,
@@ -367,6 +396,111 @@ primaryButtonText: {
   fontSize: 14,
   fontFamily: "Poppins-Regular",
   fontWeight: "600",
+},
+historyLabel: {
+  fontSize: 13,
+  fontWeight: "500",
+   fontFamily: "Poppins-Regular",
+  marginBottom: 6,
+},
+
+divider: {
+  height: 1,
+  backgroundColor: "#CED6E0",
+  marginVertical: 12,
+},
+
+sectionLabel: {
+  fontSize: 13,
+  color: "#6B7280",
+  marginBottom: 6,
+},
+
+statusBadge: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  paddingVertical: 6,
+  borderRadius: 16,
+  alignSelf: "flex-start",
+},
+
+dot: {
+  width: 6,
+  height: 6,
+  borderRadius: 16,
+  marginRight: 7,
+},
+
+techRow: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+avatar: {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: "#1E3A8A",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 8,
+},
+cardBottomRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: 16,
+},
+avatarText: {
+  color: "#FFFFFF",
+  fontWeight: "600",
+},
+
+techName: {
+  fontSize: 14,
+  color: "#1F2937",
+},
+
+raiseButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "#1A56D9",
+  width: 140,
+  height: 42,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 22,
+},
+
+raiseIcon: {
+  marginRight: 8,
+},
+
+raiseText: {
+  color: "#FFFFFF",
+  fontWeight: "500",
+},
+raiseButtonDisabled: {
+  backgroundColor: "#EDF0F3",
+
+  justifyContent: "center",
+  flexDirection: "row",
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  alignItems: "center",
+   width:195,
+  height: 42,
+
+},
+
+raiseTextDisabled: {
+  color: "#A0A0A0",              // muted gray text
+},
+
+raiseIconDisabled: {
+  color: "#9CA3AF",              // muted icon
 },
 
 });

@@ -22,7 +22,7 @@ import { useTickets } from "../../../context/TicketContext";
 import type { RootStackParamList } from "../../../types/navigation";
 import type { IssueItem } from "../../../types";
 import { Keyboard, InteractionManager } from "react-native";
-
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type RouteProps = RouteProp<RootStackParamList, "TicketDetailed">;
 
@@ -32,16 +32,17 @@ const { width } = Dimensions.get("window");
 
 const getStatusStyle = (status?: string) => {
   const s = status?.toLowerCase();
-  if (s === "not started") return { bg: "#f0f0f0", text: "#A0A0A0" };
-  if (s === "in progress") return { bg: "#d1e0fb", text: "#4D8CFF" };
-  if (s === "completed") return { bg: "#d7efe1", text: "#27AE60" };
-  return { bg: "#E5E7EB", text: "#6B7280" };
+  if (s === "not started") return { bg: "#E3E3E3", text: "#A0A0A0" };
+  if (s === "in progress") return { bg: "#B8D1FF", text: "#4D8CFF" };
+  if (s === "completed") return { bg: "#A9DFBF", text: "#27AE60" };
+ // if (s === "discarded") return { bg: "#D9D9D9", text: "#A0A0A0" };
+  return { bg: "#EDF0F3", text: "#A0A0A0" };
 };
 
 const getIssueIdColor = (priority: IssueItem["priority"]) => {
-  if (priority === "critical") return "#DC2626";
-  if (priority === "moderate") return "#F97316";
-  return "#6B7280";
+  if (priority === "critical") return "#FF3B30";
+  if (priority === "moderate") return "#FF9500";
+  return "#8E8E93";
 };
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -63,36 +64,42 @@ type TimelineType = "done" | "waiting";
 
 const TicketDetailed: React.FC = () => {
   const navigation = useNavigation();
-  const { params } = useRoute<RouteProps>();
-
   const {
     tickets,
     history,
     addComment,
     removeTicket,
     resolveTicket,
+    discardTicket,
     assignTicket,
+    removeFromHistory,
   } = useTickets();
 
   // 👇 Always get fresh issue from context
-  const issue =
-    tickets.find(t => t.id === params.issue.id) ||
-    history.find(t => t.id === params.issue.id);
+const { params } = useRoute<RouteProp<RootStackParamList, "TicketDetailed">>();
+const issue =
+  tickets.find(t => t.id === params.issueId) ||
+  history.find(t => t.id === params.issueId);
 
   if (!issue) {
     return null; // safety guard
   }
 
   const ticketComments = issue.comments || [];
-  
+
+
 
   const [message, setMessage] = useState("");
   const [draftImages, setDraftImages] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"comments" | "timeline">("comments");
+  const [activeTab, setActiveTab] = useState<"comments" | "timeline">(
+  params?.openComments ? "comments" : "timeline"
+);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const statusStyle = getStatusStyle(issue.status);
-
+  const shouldShowBottomBar =
+  issue.status !== "completed" &&
+  issue.status !== "discarded";
   /* ================= ACTIONS ================= */
 
   const pickImages = async () => {
@@ -113,64 +120,8 @@ const TicketDetailed: React.FC = () => {
     Keyboard.dismiss();
   });
 };
-
-const renderTimeline = () => {
-  const items: {
-    title: string;
-    date: string;
-    type: TimelineType;
-  }[] = [];
-
-  // 🔹 1. CREATED (always done)
-  items.push({
-    title: "Created",
-    date: formatDate(issue.createdAt),
-    type: "done",
-  });
-
-  // 🔹 2. ASSIGNED
-  if (!issue.assignedTo) {
-    items.push({
-      title: "Assigned",
-      date: "Waiting to be assigned",
-      type: "waiting",
-    });
-
-    // 🚫 STOP here (don't show further steps)
-    return items.map((item, index) => (
-      <TimelineItem
-        key={index}
-        title={item.title}
-        date={item.date}
-        type={item.type}
-        isLast={index === items.length - 1}
-      />
-    ));
-  }
-
-  // ✅ If assigned
-  items.push({
-    title: "Assigned",
-    date: formatDate(issue.assignedAt),
-    type: "done",
-  });
-
-  // 🔹 3. STATUS LOGIC
-  if (issue.status !== "completed") {
-    items.push({
-      title: "In process",
-      date: "Technician is Working on your issue",
-      type: "waiting",
-    });
-  } else {
-    items.push({
-      title: "Completed",
-      date: formatDate(issue.completedAt),
-      type: "done",
-    });
-  }
-
-  return items.map((item, index) => (
+const renderItems = (items: any[]) =>
+  items.map((item, index) => (
     <TimelineItem
       key={index}
       title={item.title}
@@ -179,25 +130,86 @@ const renderTimeline = () => {
       isLast={index === items.length - 1}
     />
   ));
+const renderTimeline = () => {
+  const items: {
+    title: string;
+    date: string;
+    type: TimelineType;
+  }[] = [];
+
+  // 🔹 1. CREATED (Always)
+  items.push({
+    title: "Created",
+    date: formatDate(issue.createdAt),
+    type: "done",
+  });
+
+  // 🔴 CASE 1 — DISCARDED
+  if (issue.status === "discarded") {
+    items.push({
+      title: "Discarded",
+      date: formatDate(issue.completedAt),
+      type: "done",
+    });
+
+    return renderItems(items);
+  }
+
+  // ⏳ NOT ASSIGNED YET
+  if (!issue.assignedTo) {
+    items.push({
+      title: "Assigned",
+      date: "Waiting to be assigned",
+      type: "waiting",
+    });
+
+    return renderItems(items);
+  }
+
+  // ✅ ASSIGNED
+  items.push({
+    title: "Assigned",
+    date: formatDate(issue.assignedAt),
+    type: "done",
+  });
+
+  // 🟡 CASE 2 — IN PROGRESS (CURRENTLY ONGOING)
+  if (issue.status === "in progress") {
+    items.push({
+      title: "In Progress",
+      date: "Technician is working on your issue",
+      type: "waiting",
+    });
+
+    return renderItems(items);
+  }
+
+  // 🟢 CASE 3 — COMPLETED (NO In Progress step)
+  if (issue.status === "completed") {
+    items.push({
+      title: "Completed",
+      date: formatDate(issue.completedAt),
+      type: "done",
+    });
+
+    return renderItems(items);
+  }
+
+  return renderItems(items);
 };
-
-
-type Comment = {
-  id: string;
-  text?: string;
-  createdAt: string;
-};
-
-
-
 
  const sendMessage = () => {
-  if (!message.trim()) return;
+  if (!message.trim() && draftImages.length === 0) return;
 
-  addComment(issue.id, message);
+  addComment(issue.id, {
+    text: message,
+    images: draftImages,
+  });
 
   setMessage("");
+  setDraftImages([]);
 };
+
 
   
   const getRelativeTime = (date: string) => {
@@ -213,15 +225,16 @@ type Comment = {
 
   const confirmClose = () => {
   Alert.alert(
-    "Close Issue",
-    "Are you sure you want to close the issue?",
+    "End Issue",
+    "Are you sure you want to End the issue?",
     [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Yes, Close",
+        text: "Yes, End",
         style: "destructive",
         onPress: () => {
           removeTicket(issue.id);
+          removeFromHistory(issue.id);
           navigation.goBack();
         },
       },
@@ -271,13 +284,6 @@ const TimelineItem = ({
     "How did it happen?",
     [
       {
-        text: "Did you fix it?",
-        onPress: () => {
-          resolveTicket(issue.id);
-          navigation.goBack();
-        },
-      },
-      {
         text: "Technician has fixed",
         onPress: () => {
           resolveTicket(issue.id);
@@ -288,7 +294,8 @@ const TimelineItem = ({
     ]
   );
 };
-
+ const insets = useSafeAreaInsets();
+  const [viewerImages, setViewerImages] = useState<string[]>([]);
 
   return (
 
@@ -298,8 +305,10 @@ const TimelineItem = ({
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} />
         </TouchableOpacity>
+        <View style={styles.headerCenter}>
         <Text style={styles.headerTitle}>Issue details</Text>
-        <Ionicons name="ellipsis-horizontal" size={22} />
+        </View>
+        <View style={{ width: 20 }} />
       </View>
 
       {/* ================= CONTENT ================= */}
@@ -319,7 +328,7 @@ const TimelineItem = ({
             label="Status"
             value={
               <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-                <Text style={{ color: statusStyle.text }}>
+                <Text style={{ color: statusStyle.text , fontFamily:"Poppins-Regular", fontWeight: "600"}}>
                   ●  {capitalize(issue.status ?? "unknown")}
                 </Text>
               </View>
@@ -377,18 +386,20 @@ const TimelineItem = ({
   <>
     <Text style={styles.sectionTitle}>Images</Text>
 
-    <FlatList
-      data={issue.images}
+   <FlatList
+  data={issue.images}
       horizontal
       pagingEnabled
       keyExtractor={(u, i) => `${u}-${i}`}
       showsHorizontalScrollIndicator={false}
       renderItem={({ item, index }) => (
         <TouchableOpacity
-          onPress={() => {
-            setViewerIndex(index);
-            setViewerVisible(true);
-          }}
+         onPress={() => {
+  setViewerImages(issue.images || []);
+  setViewerIndex(index);
+  setViewerVisible(true);
+}}
+
         >
           <Image source={{ uri: item }} style={styles.sliderImage} />
         </TouchableOpacity>
@@ -458,31 +469,85 @@ const TimelineItem = ({
                 {c.text}
               </Text>
             )}
+            {c.images?.length > 0 && (
+  <View style={styles.commentImageGrid}>
+  {c.images.slice(0, 4).map((uri, i) => {
+    const remaining = c.images.length - 4;
+
+    return (
+      <TouchableOpacity
+        key={i}
+        activeOpacity={0.9}
+        style={styles.imageWrapper}
+        onPress={() => {
+          setViewerImages(c.images || []);
+          setViewerIndex(i);
+          setViewerVisible(true);
+        }}
+      >
+        <Image
+          source={{ uri }}
+          style={[
+            styles.commentImageModern,
+            c.images.length === 1 && styles.singleImage,
+          ]}
+        />
+
+        {/* Show +X overlay if more than 4 */}
+        {i === 3 && remaining > 0 && (
+          <View style={styles.moreOverlay}>
+            <Text style={styles.moreText}>+{remaining}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  })}
+</View>
+
+)}
           </View>
         </View>
       ))
     )}
+  {draftImages.length > 0 && (
+  <View style={{ flexDirection: "row", marginBottom: 10 }}>
+    {draftImages.map((uri, i) => (
+      <Image
+        key={i}
+        source={{ uri }}
+        style={{
+          width: 60,
+          height: 60,
+          borderRadius: 10,
+          marginRight: 8,
+        }}
+      />
+    ))}
+  </View>
+)}
 
     {/* Input Bar */}
-    <View style={styles.commentInputBar}>
-      <TextInput
-        placeholder="Add a comment"
-        value={message}
-        onChangeText={setMessage}
-        style={styles.commentInput}
-      />
+{shouldShowBottomBar && (
+  <View style={styles.commentInputBar}>
+    <TextInput
+      placeholder="Add a comment"
+      value={message}
+      onChangeText={setMessage}
+      style={styles.commentInput}
+    />
 
-      <TouchableOpacity onPress={pickImages}>
-        <Ionicons name="attach-outline" size={24} color="#6B7280"/>
-      </TouchableOpacity>
+    <TouchableOpacity onPress={pickImages}>
+      <Ionicons name="attach-outline" size={24} color="#6B7280" />
+    </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.commentSendBtn}
-        onPress={sendMessage}
-      >
-        <Ionicons name="send" size={16} color="#FFF"/>
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity
+      style={styles.commentSendBtn}
+      onPress={sendMessage}
+    >
+      <Ionicons name="send" size={16} color="#FFF" />
+    </TouchableOpacity>
+  </View>
+)}
   </>
 )}
 
@@ -497,35 +562,49 @@ const TimelineItem = ({
       </KeyboardAvoidingView>
 
       {/* ================= BOTTOM BAR ================= */}
-      <View style={styles.bottomBar}>
+      {shouldShowBottomBar && (
+  <View
+    style={[
+      styles.bottomBar,
+      { paddingBottom: insets.bottom, height: 72 + insets.bottom },
+    ]}
+  >
+    <TouchableOpacity style={styles.closeBtn} onPress={confirmClose}>
+      <Text style={styles.closeText}>Close</Text>
+    </TouchableOpacity>
 
-        <TouchableOpacity style={styles.closeBtn} onPress={confirmClose}>
-          <Text style={styles.closeText}>Close</Text>
-        </TouchableOpacity>
+    <TouchableOpacity style={styles.resolveBtn} onPress={resolveIssue}>
+      <Text style={styles.resolveText}>Resolved</Text>
+    </TouchableOpacity>
 
-        <TouchableOpacity style={styles.resolveBtn} onPress={resolveIssue}>
-          <Text style={styles.resolveText}>Resolved</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-  style={{
-    backgroundColor: "#0D2B6C",
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    margin: 10,
-    borderRadius: 12,
-  }}
-  onPress={() => assignTicket(issue.id, "John")}
->
-  <Text style={{ color: "#FFF", fontWeight: "600",fontFamily: "Poppins-Regular", fontSize: 16  }}>
-    Assign
-  </Text>
-</TouchableOpacity>
-      </View>
+    <TouchableOpacity
+      style={{
+        backgroundColor: "#0D2B6C",
+        paddingVertical: 13,
+        paddingHorizontal: 22,
+        margin: 10,
+        borderRadius: 12,
+      }}
+      onPress={() => assignTicket(issue.id, "John")}
+    >
+      <Text
+        style={{
+          color: "#FFF",
+          fontWeight: "600",
+          fontFamily: "Poppins-Regular",
+          fontSize: 16,
+        }}
+      >
+        Assign
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
 
       {/* ============ IMAGE VIEWER ============ */}
       <Modal visible={viewerVisible} transparent>
         <FlatList
-          data={issue.images}
+          data={viewerImages}
           horizontal
           pagingEnabled
           initialScrollIndex={viewerIndex}
@@ -593,7 +672,7 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
 
-  headerTitle: { fontSize: 16, fontWeight: "600" },
+  headerTitle: { fontSize: 18, fontWeight: "600",fontFamily: "Poppins-Regular" },
 
   content: { padding: 16 ,paddingBottom: 0,},
 
@@ -604,11 +683,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     width: "70%",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 18,
      gap: 10,
   },
-  infoLabel: { marginLeft: 5,fontSize: 13, color: "#64748B", width: "35%" },
-  infoValue: {fontWeight: "700", },
+  infoLabel: { marginLeft: 5,fontSize: 14, color: "#081A41", width: "35%",fontFamily :"Poppins-Regular" },
+  infoValue: {fontWeight: "600",fontSize: 14, color: "#49454F", fontFamily :"Poppins-Regular" },
 
   statusPill: {
     paddingHorizontal: 12,
@@ -617,7 +696,7 @@ const styles = StyleSheet.create({
     marginLeft: -2,
   },
 
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginVertical: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: "600",fontFamily: "Poppins-Regular", marginVertical: 12 , color: "#081A41"},
 
   sliderImage: {
     width: width - 50,
@@ -689,7 +768,6 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === "android" ? 0 : 0,
     left: 0,
     right: 0,
-    height: 72,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -728,29 +806,12 @@ avatar: {
   height: 28,
   borderRadius: 14,
   marginLeft: -1,
-  backgroundColor: "#4D8CFF",
+  backgroundColor: "#0D2B6C",
   alignItems: "center",
   justifyContent: "center",
   marginRight: 8,
 },
 
-  viewerPage: {
-    width,
-    height: "100%",
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  viewerImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
-  viewerClose: {
-    position: "absolute",
-    top: 40,
-    right: 20,
-  },
   /* ================= TABS ================= */
 
 tabRow: {
@@ -776,7 +837,7 @@ activeTabText: {
 
 tabDivider: {
   height: 1,
-  backgroundColor: "#E5E7EB",
+  backgroundColor: "#CED6E0",
   marginTop: 6,
   marginBottom: 16,
 },
@@ -825,12 +886,11 @@ commentInputBar: {
   borderColor: "#CED6E0",
   backgroundColor: "#fff",
   borderRadius: 12,
-  position: "fixed",
   paddingHorizontal: 12,
-  paddingVertical: 4,
-  marginTop: 30,
-
+  paddingVertical: 6,
+  marginTop: 20,
 },
+
 
 commentInput: {
   flex: 1,
@@ -838,7 +898,10 @@ commentInput: {
   fontWeight: "500",
   fontFamily: "Poppins-Regular"
 },
-
+headerCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 commentSendBtn: {
   width: 36,
   height: 36,
@@ -866,7 +929,7 @@ timelineLeft: {
 },
 
 infoCard: {
-  backgroundColor: "#F8FAFC",
+  backgroundColor: "#FAFBFC",
   borderRadius: 16,
   padding: 16,
   marginTop: 8,
@@ -883,11 +946,11 @@ timelineIcon: {
   borderRadius: 13,
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: "#f7ebe2",
+  backgroundColor: "#F4E8E0",
 },
 
 timelineIconDone: {
-  backgroundColor: "#dcf0e6",
+  backgroundColor: "#DFEEE6",
 },
 
 timelineLine: {
@@ -898,7 +961,7 @@ timelineLine: {
 },
 
 timelineTitle: {
-  fontWeight: "700",
+  fontWeight: "600",
   fontSize: 14,
   fontFamily: "Poppins-Regular",
   color: "#4B4B4B"
@@ -912,13 +975,78 @@ timelineDate: {
 },
 
 commentsCard: {
-  backgroundColor: "#F8FAFC",
+  backgroundColor: "#FAFBFC",
   borderRadius: 8,
   padding: 16,
   marginTop: 20,
-  minHeight: 297, // 🔥 minimum height even if no comments
+  minHeight: 297, 
 },
 
+viewerPage: {
+  width,
+  height: "100%",
+  backgroundColor: "#000",
+  alignItems: "center",
+  justifyContent: "center",
+},
 
+viewerImage: {
+  width: width,
+  height: "70%",
+  resizeMode: "contain",
+},
+
+viewerClose: {
+  position: "absolute",
+  top: 60,
+  right: 20,
+  backgroundColor: "rgba(0,0,0,0.6)",
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+commentImageGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 6,
+  marginTop: 8,
+},
+
+imageWrapper: {
+  position: "relative",
+},
+
+commentImageModern: {
+  width: (width - 80) / 2,
+  height: (width - 80) / 2,
+  borderRadius: 14,
+},
+
+singleImage: {
+  width: width * 0.6,
+  height: width * 0.6,
+  borderRadius: 16,
+},
+
+moreOverlay: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  borderRadius: 14,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+moreText: {
+  color: "#FFF",
+  fontSize: 20,
+  fontWeight: "700",
+},
 
 });

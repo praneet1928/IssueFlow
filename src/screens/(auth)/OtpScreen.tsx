@@ -1,17 +1,17 @@
 import * as React from "react";
 import {Text, StyleSheet, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView,Keyboard} from "react-native";
 import { RootStackParamList } from '../../types/navigation';
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import Component from "../../../assets/images/back.svg"
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
-
-type NavigationProp = StackNavigationProp<RootStackParamList, 'Unactive'>;
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+type NavigationProp = StackNavigationProp<RootStackParamList, 'OtpScreen'>;
 
 const Unactive = () => {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RootStackParamList, 'Unactive'>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'OtpScreen'>>();
   const emailFromParams = (route.params as any)?.email as string | undefined;
   
   const maskEmail = (email?: string) => {
@@ -104,12 +104,28 @@ const Unactive = () => {
   };
   
   // Handle backspace
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+ const handleKeyPress = (e: any, index: number) => {
+  if (e.nativeEvent.key === "Backspace") {
+
+    const newOtp = [...otp];
+
+    if (newOtp[index] !== "") {
+      // Clear current box
+      newOtp[index] = "";
+      setOtp(newOtp);
+      return;
+    }
+
+    if (index > 0) {
+      // Move to previous and clear it
       inputRefs.current[index - 1]?.focus();
+      newOtp[index - 1] = "";
+      setOtp(newOtp);
       setActiveIndex(index - 1);
     }
-  };
+  }
+};
+
   
   // Handle focus
   const handleFocus = (index: number) => {
@@ -157,342 +173,308 @@ const Unactive = () => {
       // Don't clear OTP, just show error state
     }
   };
-  
+const insets = useSafeAreaInsets();
+
   // Get border style for each input box
   const getBorderStyle = (index: number) => {
     if (isError) {
-      return styles.wrapperError;
+      return styles.otpBoxError;
     }
     if (activeIndex === index) {
-      return styles.wrapperActive;
+      return styles.otpBoxActive;
     }
     return {};
   };
 
   return (
-    <SafeAreaView style={[styles.forgotPasswordotpunactive, styles.viewFlexBox]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
+  <SafeAreaView style={styles.safeArea}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-      <View style={[styles.view, styles.viewFlexBox]}>
-        <View style={[styles.topAppBar, styles.barPosition]}>
-          <Component onPress={() => navigation.goBack()} style={styles.backIcon} width={20} height={20} />
-        </View>
-        
-        <Text style={styles.enterOtp}>Enter OTP</Text>
-        
-        <Text style={styles.weHaveSentContainer}>
-          <Text style={styles.forgotPasswordotpunactiveWeHaveSentContainer}>
-            <Text style={styles.weHaveSent}>We have sent the verification code to your email address</Text>
-            <Text style={styles.jncom}> {maskEmail(emailFromParams)}</Text>
+        <View style={[styles.container]}>
+
+          {/* HEADER */}
+          
+            <Ionicons
+            name="chevron-back"
+            size={24}
+            style={{left: -5}}
+            onPress={() => navigation.goBack()}
+            color="#0F172A"
+          />
+      
+
+          {/* TITLE */}
+          <Text style={styles.title}>Enter OTP</Text>
+
+          {/* SUBTEXT */}
+          <Text style={styles.subtitle}>
+            We have sent the verification code to your email address{" "}
+            <Text style={styles.email}>{maskEmail(emailFromParams)}</Text>
           </Text>
-        </Text>
-        
-        <View style={styles.frameParent}>
-          {[0, 1, 2, 3].map((index) => (
-            <View key={index} style={[styles.wrapper, { left: index * 94 }, getBorderStyle(index)]}>
-              <TextInput
-                ref={(ref) => { inputRefs.current[index] = ref; }}
-                style={[styles.text, otp[index] && styles.textFilled, isError && styles.textError]}
-                value={otp[index]}
-                onChangeText={(value) => handleOtpChange(value, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                onFocus={() => handleFocus(index)}
-                onBlur={handleBlur}
-                keyboardType="number-pad"
-                maxLength={1}
-                selectTextOnFocus
-                autoFocus={index === 0}
-                textAlign="center"
-              />
-            </View>
-          ))}
-        </View>
-        
-        <Text style={[styles.theCodeWillContainer, styles.containerPosition]}>
-          <Text style={styles.theCodeWill}>{`The code will expire in `}</Text>
-          <Text style={styles.text4Typo}>{formatTime(timer)}</Text>
-        </Text>
-        
-        {isError ? (
-          <View style={styles.errorMessageWrapper}>
-            <Text style={styles.errorIcon}>ⓘ</Text>
-            <Text style={styles.errorMessage}>Invalid OTP, please try again</Text>
+
+          {/* OTP BOXES */}
+          <View style={styles.otpRow}>
+            {[0, 1, 2, 3].map((index) => (
+              <View
+                key={index}
+                style={[
+  styles.otpBox,
+  activeIndex === index && !isError && styles.otpBoxActive,
+  isError && styles.otpBoxError ,
+]}
+
+              >
+                <TextInput
+  ref={(ref) => {
+    inputRefs.current[index] = ref;
+  }}
+  style={[
+    styles.otpInput,
+    isError && styles.otpInputError,
+  ]}
+  value={otp[index]}
+  onChangeText={(value) => handleOtpChange(value, index)}
+  onKeyPress={(e) => handleKeyPress(e, index)}
+  onFocus={() => handleFocus(index)}
+  onBlur={handleBlur}
+  keyboardType="number-pad"
+  placeholder="-"
+  placeholderTextColor={"#CED6E0"}
+  maxLength={1}
+  textAlign="center"
+/>
+
+              </View>
+            ))}
           </View>
-        ) : (
-          <View style={[styles.enterThe4DigitOtpWrapper, styles.topAppBarFlexBox]}>
-            <Text style={styles.enterThe4Digit}>Enter the 4-digit OTP</Text>
-          </View>
-        )}
-        
-        <View style={styles.bottomActions}>
-          <View style={styles.ifYouDidntWrapper}>
-            <Text style={styles.ifYouDidntText}>
-              <Text style={styles.ifYouDidnt}>If you didn't receive a code? </Text>
-              <Text onPress={handleResendCode} style={[styles.resendCode, isResendDisabled && styles.resendCodeDisabled]}>
+          
+          {isError ? (
+  <View style={styles.errorRow}>
+    <Text style={styles.errorIcon}>ⓘ</Text>
+    <Text style={styles.errorText}>
+      Invalid OTP, please try again
+    </Text>
+  </View>
+) : (
+  <Text style={styles.helperText}>
+    Enter the 4-digit OTP
+  </Text>
+)}
+
+
+          <Text style={styles.timerText}>
+            The code will expire in{" "}
+            <Text style={styles.timerBold}>
+              {formatTime(timer)}
+            </Text>
+          </Text>
+
+          {/* PUSH BOTTOM DOWN */}
+          <View style={{ flex: 1 }} />
+
+          {/* BOTTOM SECTION */}
+          <View style={styles.bottomSection}>
+            <Text style={styles.resendWrapper}>
+              If you didn't receive a code?{" "}
+              <Text
+                style={[
+                  styles.resend,
+                  isResendDisabled &&
+                    styles.resendDisabled,
+                ]}
+                onPress={handleResendCode}
+              >
                 Resend code
               </Text>
             </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                !isSubmitDisabled &&
+                  styles.submitButtonActive,
+              ]}
+              onPress={handleSubmit}
+              disabled={isSubmitDisabled}
+            >
+              <Text
+                style={[
+                  styles.submitText,
+                  !isSubmitDisabled &&
+                    styles.submitTextActive,
+                ]}
+              >
+                Submit
+              </Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.labelTextWrapper, !isSubmitDisabled && styles.labelTextWrapperActive]}
-            onPress={handleSubmit}
-            disabled={isSubmitDisabled}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.labelText, !isSubmitDisabled && styles.labelTextActive]}>
-              Submit
-            </Text>
-          </TouchableOpacity>
+
         </View>
-      </View>
       </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 };
 
 const styles = StyleSheet.create({
-  forgotPasswordotpunactive: {
-    backgroundColor: "#fff"
-  },
-  viewFlexBox: {
+  safeArea: {
     flex: 1,
-    backgroundColor: "#fff"
+    backgroundColor: "#fff",
   },
-  wrapper: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    width: 78,
-    borderWidth: 1,
-    borderColor: "#ced6e0",
-    borderStyle: "solid",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    borderRadius: 12,
-    top: 0,
-    height: 52,
-    position: "absolute",
-    overflow: "hidden"
-  },
-  wrapperActive: {
-    borderColor: "#1A56D9",
-    borderWidth: 2,
-  },
-  wrapperError: {
-    borderColor: "#D92D20",
-    borderWidth: 1,
-  },
-  textTypo: {
-    fontFamily: "Poppins-Medium",
-    fontWeight: "500"
-  },
-  barPosition: {
-    width: 390,
-    left: 0,
-    position: "absolute"
-  },
-  containerPosition: {
-    left: "50%",
-    textAlign: "left",
-    fontSize: 14,
-    position: "absolute"
-  },
-  topAppBarFlexBox: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  view: {
+
+  container: {
     flex: 1,
-    width: "100%",
-    backgroundColor: "#fff"
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  enterOtp: {
-    top: 108,
+
+  title: {
     fontSize: 24,
-    color: "#081a41",
-    textAlign: "center",
-    fontFamily: "Poppins-Medium",
-    fontWeight: "500",
-    left: 15,
-    position: "absolute"
-  },
-  weHaveSentContainer: {
-    top: 148,
-    display: "flex",
-    width: 360,
-    alignItems: "center",
-    textAlign: "left",
+    fontWeight: "600",
     fontFamily: "Poppins-Regular",
+    color: "#081A41",
+    marginTop: 30,
+    marginBottom: 4,
+  },
+
+  subtitle: {
     fontSize: 14,
-    left: 15,
-    position: "absolute"
+    color: "#4B4B4B",
+    fontFamily: "Poppins-Regular",
   },
-  forgotPasswordotpunactiveWeHaveSentContainer: {
-    width: "100%"
+
+  email: {
+    color: "#1A56D9",
   },
-  weHaveSent: {
-    color: "#4b4b4b"
+
+  otpRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
   },
-  jncom: {
-    color: "#1a56d9"
-  },
-  frameParent: {
-    marginLeft: -180,
-    top: 210,
+
+  otpBox: {
+    width: 78,
     height: 52,
-    left: "50%",
-    width: 360,
-    position: "absolute"
-  },
-  text: {
-    fontSize: 18,
-    color: "#081a41",
-    textAlign: 'center',
-    fontFamily: "Poppins-Medium",
-    fontWeight: "500",
-    width: '100%',
-    height: '100%',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    padding: 0,
-  },
-  textFilled: {
-    color: "#081a41",
-  },
-  textError: {
-    color: "#D92D20",
-  },
-  errorMessageWrapper: {
-    top: 265,
-    left: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    position: "absolute"
-  },
-  errorIcon: {
-    fontSize: 14,
-    color: "#D92D20",
-    marginLeft: 3,
-    fontWeight: 800,
-    marginRight: 3,
-  },
-  errorMessage: {
-    fontSize: 12,
-    color: "#D92D20",
-    fontStyle: "italic",
-    letterSpacing: 0.25,
-    fontFamily: "Poppins-Regular",
-  },
-  topAppBar: {
-    top: 10,
-    height: 64,
-    paddingLeft: 8,
-    paddingTop: 8,
-    paddingRight: 20,
-    paddingBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff"
-  },
-  backIcon: {
-    width: 40,
-    height: 40,
-    marginLeft: 10,
-  },
-  theCodeWillContainer: {
-    marginLeft: -98,
-    top: 298,
-    color: "#4b4b4b"
-  },
-  theCodeWill: {
-    fontFamily: "Poppins-Regular"
-  },
-  text4Typo: {
-    fontFamily: "Poppins-Regular",
-    fontWeight: "800",
-  },
-  enterThe4DigitOtpWrapper: {
-    top: 266,
-    left: 15,
-    position: "absolute",
-    flexDirection: "row"
-  },
-  enterThe4Digit: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontStyle: "italic",
-    marginLeft: 5,
-    fontFamily: "Poppins-Italic",
-    color: "#4b4b4b",
-    textAlign: "left"
-  },
-  ifYouDidntWrapper: {
-    justifyContent: 'center',
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: 'center',
-    marginTop: 24
-  },
-  ifYouDidntText: {
-    fontSize: 14,
-    fontFamily: "Poppins-Regular",
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  ifYouDidnt: {
-    color: "#a0a0a0",
-    fontFamily: "Poppins-Regular"
-  },
-  resendCode: {
-    fontFamily: "Poppins-Medium",
-    fontWeight: "500",
-    color: "#1a56d9",
-    justifyContent: 'center',
-    fontSize: 14
-  },
-  resendCodeDisabled: {
-    color: "#a0a0a0"
-  },
-  labelTextWrapper: {
-    backgroundColor: "#edf0f3",
-    paddingHorizontal: 155,
-    paddingVertical: 15,
-    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#CED6E0",
     borderRadius: 12,
-    flexDirection: "row",
-    height: 52,
-    width: 360,
+    justifyContent: "center",
     alignItems: "center",
-    alignSelf: 'center',
+  },
+
+  otpBoxActive: {
+    borderColor: "#1A56D9",
+    borderWidth: 1,
+  },
+
+  otpBoxError: {
+    borderColor: "#D92D20",
+  },
+
+  otpInput: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#4B4B4B",
+    fontFamily: "Poppins-Regular"
+  },
+
+  timerText: {
     marginTop: 16,
-    overflow: "hidden"
-  },
-  labelTextWrapperActive: {
-    backgroundColor: "#0D2B6C"
-  },
-  labelText: {
-    color: "#a0a0a0",
     fontSize: 14,
     textAlign: "center",
-    fontFamily: "Poppins-Medium",
-    fontWeight: "500"
+    fontWeight: "500",
+    fontFamily: "Poppins-Regular",
+    color: "#4B4B4B",
   },
-  labelTextActive: {
-    color: "#fff"
+
+  timerBold: {
+    fontWeight: "700",
+    color: "#4B4B4B",
   },
-  bottomActions: {
-    marginTop: 'auto',
-    paddingBottom: 24
-  }
+
+  bottomSection: {
+    paddingBottom: 24,
+  },
+
+  resendWrapper: {
+    textAlign: "center",
+    marginBottom: 12,
+    fontSize: 14,
+    color: "#A0A0A0",
+  },
+
+  resend: {
+    color: "#1A56D9",
+    fontWeight: "500",
+  },
+
+  resendDisabled: {
+    color: "#A0A0A0",
+  },
+
+  submitButton: {
+    height: 52,
+    backgroundColor: "#EDF0F3",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  submitButtonActive: {
+    backgroundColor: "#0D2B6C",
+  },
+otpInputError: {
+  color: "#D92D20",
+  fontFamily: "Poppins-Regular"
+},
+
+  submitText: {
+    color: "#A0A0A0",
+    fontFamily: "Poppins-Regular",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  submitTextActive: {
+    color: "#fff",
+  },
+  helperText: {
+  fontSize: 12,
+  fontStyle: "italic",
+  fontFamily: "Poppins-Regular",
+  color: "#4B4B4B",
+  marginTop: 8,
+},
+
+errorRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginTop: 8,
+},
+
+errorIcon: {
+  fontSize: 14,
+  color: "#D92D20",
+  marginRight: 2,
+},
+
+errorText: {
+  fontSize: 12,
+  color: "#D92D20",
+  fontStyle: "italic",
+  fontFamily: "Poppins-Regular",
+},
+
 });
+
 
 export default Unactive;

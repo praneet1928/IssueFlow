@@ -9,6 +9,8 @@ import {
   ScrollView,
   Image,
   Alert,
+  Platform,
+  KeyboardAvoidingView,
   Modal,
   Dimensions,
   Keyboard,
@@ -23,7 +25,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTickets } from "../../../context/TicketContext";
 import type { IssueItem } from "../../../types";
-
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const priorities = ["Critical", "Moderate", "Low"] as const;
 const issueTypes = ["Network", "Hardware", "Other"] as const;
@@ -61,7 +64,7 @@ const NewTicket: React.FC = () => {
 	const route = useRoute();
   const [productImages, setProductImages] = useState<string[]>([]);
   const [issueImages, setIssueImages] = useState<string[]>([]);
-
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   // Lightbox modal
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -128,9 +131,10 @@ const NewTicket: React.FC = () => {
       setProductImages((prev) => prev.filter((_, i) => i !== index));
     else setIssueImages((prev) => prev.filter((_, i) => i !== index));
   };
-
+  
   const handleSuccess = () => {
   if (!isFormValid) return;
+  Keyboard.dismiss();
 
   const newTicket: IssueItem = {
     id: Date.now().toString(),
@@ -144,16 +148,16 @@ const NewTicket: React.FC = () => {
     })),
     Device: selectedIssueType[0] ?? "Other",
     description,
-    images: issueImages, // 🔑 THIS SOLVES IMAGE SLIDER
+    images: issueImages, // 
     createdAt: new Date().toISOString(),
-    status: "in progress",
+    status: "not started",
   };
 
   addTicket(newTicket);
 
   navigation.navigate("Successfull");
 };
-
+const insets = useSafeAreaInsets();
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -162,10 +166,21 @@ const NewTicket: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safearea}>
-      {/* Completely hide the status bar for this screen */}
-
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 70 }}>
+  <SafeAreaProvider style={styles.safearea}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{
+          paddingTop: 30,
+          paddingBottom: 100 + insets.bottom,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Title bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
@@ -225,20 +240,32 @@ const NewTicket: React.FC = () => {
           TITLE<Text style={styles.required}>*</Text>
         </Text>
         <TextInput
-          style={styles.input}
-          placeholder="Enter title"
-          value={title}
-          onChangeText={setTitle}
-          placeholderTextColor="#9CA3AF"
-        />
+  style={[
+    styles.input,
+    focusedField === "title" && styles.inputActive
+  ]}
+  placeholder="Enter title"
+  value={title}
+  onChangeText={setTitle}
+  onFocus={() => setFocusedField("title")}
+  onBlur={() => setFocusedField(null)}
+  placeholderTextColor="#9CA3AF"
+/>
+
 
         <TextInput
-          style={styles.input}
-          placeholder="Description (optional)"
-          value={description}
-          onChangeText={setDescription}
-          placeholderTextColor="#9CA3AF"
-        />
+  style={[
+    styles.input,
+    focusedField === "description" && styles.inputActive
+  ]}
+  placeholder="Description (optional)"
+  value={description}
+  onChangeText={setDescription}
+  onFocus={() => setFocusedField("description")}
+  onBlur={() => setFocusedField(null)}
+  placeholderTextColor="#9CA3AF"
+/>
+
 
 
         <Text style={styles.label}>ADD IMAGE</Text>
@@ -252,13 +279,19 @@ const NewTicket: React.FC = () => {
         <Text style={styles.label}>
           LOCATION<Text style={styles.required}>*</Text>
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter location"
-          value={location}
-          onChangeText={setLocation}
-          placeholderTextColor="#9CA3AF"
-        />
+       <TextInput
+  style={[
+    styles.input,
+    focusedField === "location" && styles.inputActive
+  ]}
+  placeholder="Enter location"
+  value={location}
+  onChangeText={setLocation}
+  onFocus={() => setFocusedField("location")}
+  onBlur={() => setFocusedField(null)}
+  placeholderTextColor="#9CA3AF"
+/>
+
 
         <TouchableOpacity
           style={[styles.submitButton, !isFormValid && styles.buttonDisabled]}
@@ -272,7 +305,7 @@ const NewTicket: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
+</KeyboardAvoidingView>
       {/* Lightbox modal */}
       <Modal
         visible={viewerVisible}
@@ -325,7 +358,8 @@ const NewTicket: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      
+    </SafeAreaProvider>
   );
 };
 
@@ -379,7 +413,7 @@ const CARD_H = SCREEN_H * 0.7;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 20 },
   topBar: {
-  position: "static",
+  //position: "static",
   marginTop: 2,
   marginBottom: "18%",
   width: "100%",
@@ -527,6 +561,11 @@ closeCircle: {
     width: "80%",
     height: "90%",
   },
+  inputActive: {
+  borderColor: "#1A56D9",
+  borderWidth: 1,
+},
+
   removeChip: {
     position: "absolute",
     right: -6,

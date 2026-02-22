@@ -15,11 +15,12 @@ export type IssueItem = {
   Device: string;
 
   // ⬇️ BACKEND / LIFECYCLE FIELDS (OPTIONAL)
-  createdAt?: string;
-  status?: "not started" | "assigned" | "in progress" | "completed";
+  createdAt: string;
+  status?: "not started" | "assigned" | "in progress" | "completed" | "discarded";
   assignedTo?: string;
 assignedAt?: string;
 completedAt?: string;
+ discardedAt?: string; 
   // ⬇️ OPTIONAL CONTENT
   description?: string;
   images?: string[];
@@ -29,11 +30,30 @@ completedAt?: string;
 };
 
 export interface TicketComment {
-  id: string;
-  text: string;
-  createdAt: string;
+  id: string
+  text?: string
+  images: string[]
+  createdAt: string
 }
 
+// types/notification.ts
+
+export type NotificationType =
+  | "issue_created"
+  | "assigned"
+  | "unassigned"
+  | "resolved"
+  | "comment";
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  issueId: string;
+  issueCode: string;
+  message?: string;
+  createdAt: string;
+  read?: boolean;
+}
 
 export interface DeviceItem {
   id: string;

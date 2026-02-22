@@ -83,7 +83,7 @@ const handleLogout = () => {
       <Ionicons
         name="chevron-forward"
         size={18}
-        color="#9CA3AF"
+        color="#081A41"
       />
     )}
   </TouchableOpacity>
@@ -122,19 +122,11 @@ const handleLogout = () => {
     />
   } onPress={() => navigation.navigate("HelpCentre")}/>
         <Row label="Report technical problem" isLast icon={
-    <Report width={22}
-    />
-  } onPress={() => navigation.navigate("ReportIssue")}/>
+    <Report width={22} /> } onPress={() => navigation.navigate("ReportIssue")}/>
       </View>
       <Text style={[styles.sectionTitle, {marginTop: 40}]}>GENERAL</Text>
       <View style={styles.section}>
-        <Row
-          label="Account settings"
-          icon={
-    <Profile width={22} />
-  }
-          onPress={() => navigation.navigate("NewTicket")}
-        />
+        
       <View style={styles.section}>
         <Row
           label="Change Password"
@@ -142,7 +134,7 @@ const handleLogout = () => {
     <Password width={22}
     />
   }
-          onPress={() => navigation.navigate("NewTicket")}
+          onPress={() => navigation.navigate("ResetPassword")}
         />
 
       {/* ACTIONS */}
