@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UAMMS Dashboard</title>
+
+  <link rel="stylesheet" href="../frontend/css/style.css">
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+<h1>📊 UAMMS Dashboard</h1>
+<p>Unified Academic Marks Management System</p>
+</div>
+
+<!-- ACTION SELECT -->
+<div class="card action-card">
+
+<h2>Choose Action</h2>
+
+<div class="radio-grid">
+
+<label class="option">
+<input type="radio" name="mode" onclick="setMode('excel')">
+📁 Upload Excel
+</label>
+
+<label class="option">
+<input type="radio" name="mode" onclick="setMode('ocr')">
+📷 Scan Award List
+</label>
+
+<label class="option">
+<input type="radio" name="mode" onclick="setMode('nominal')">
+📋 Upload Nominal List
+</label>
+
+<label class="option">
+<input type="radio" name="mode" onclick="setMode('manual')">
+✍ Manual Entry
+</label>
+
+<label class="option">
+<input type="radio" name="mode" onclick="setMode('export')">
+⬇ Export Marks
+</label>
+
+</div>
+</div>
+
+<!-- CONTEXT -->
+<div id="contextBox" class="card hidden">
+
+<h2>Exam Context</h2>
+
+<div class="grid">
+
+<select id="sectionSelect">
+<option>A</option>
+<option>B</option>
+<option>C</option>
+</select>
+
+<select id="examSelect">
+<option value="MID">Mid Exam</option>
+<option value="END">End Semester</option>
+</select>
+
+<select id="subjectSelect">
+<option value="">Subject</option>
+<option value="DBMS">DBMS</option>
+<option value="OS">Operating Systems</option>
+<option value="CN">Computer Networks</option>
+</select>
+
+</div>
+
+<button class="btn-primary" onclick="loadAwardList()">Load Award List</button>
+
+</div>
+
+<!-- EXCEL MODE -->
+<div id="excelMode" class="card hidden">
+<h2>Upload Excel</h2>
+
+<input type="file">
+<button class="btn-primary">Upload & Map</button>
+
+</div>
+
+<!-- OCR MODE -->
+<div id="ocrMode" class="card hidden">
+
+<h2>Scan Award List</h2>
+
+<input type="file" id="scanFile" accept="image/*">
+
+<button onclick="uploadScannedAward()">Scan & Extract</button>
+
+<div class="legend">
+
+<span class="yellow">🟡 OCR Extracted</span>
+<span class="green">🟢 Verified</span>
+<span class="red">🔴 Error</span>
+
+</div>
+
+</div>
+
+<!-- NOMINAL MODE -->
+<div id="nominalMode" class="card hidden">
+
+<h2>Upload Nominal Roll</h2>
+
+<div class="grid">
+
+<input placeholder="Department">
+<input placeholder="Year">
+<input placeholder="Semester">
+<input placeholder="Section">
+
+</div>
+
+<input type="file">
+
+<button class="btn-primary">Upload</button>
+
+</div>
+
+<!-- MANUAL ENTRY -->
+<div id="manualMode" class="card hidden">
+
+<h2>Manual Entry</h2>
+<p>Edit marks directly in the table.</p>
+
+</div>
+
+<!-- EXPORT -->
+<div id="exportMode" class="card hidden">
+
+<h2>Export Marks</h2>
+
+<button onclick="exportExcel()">Export Excel</button>
+<button onclick="exportPDF()">Export PDF</button>
+
+</div>
+
+<!-- TABLE -->
+<div id="awardListBox" class="card hidden">
+
+<h2>Award List</h2>
+
+<table id="marksTable">
+
+<tr>
+<th>Roll</th>
+<th>Name</th>
+<th>Marks</th>
+</tr>
+
+</table>
+
+</div>
+
+<div id="saveBox" class="save-bar hidden">
+<button onclick="saveMarks()">💾 Save Draft</button>
+</div>
+
+</div>
+
+<script src="js/dashboard.js"></script> 
+<script src="js/marks.js"></script>
+
+</body>
+</html>
